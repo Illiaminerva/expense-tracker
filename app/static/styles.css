@@ -1,0 +1,226 @@
+/* General styles */
+
+body {
+    background-color: #f0f2f5;
+    font-family: 'Roboto', sans-serif;
+}
+
+
+/* Navbar styling */
+
+.navbar {
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #3b5998;
+}
+
+
+/* Container styles */
+
+.container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+    padding: 20px;
+    margin-top: 20px;
+}
+
+
+/* Heading styles */
+
+h2 {
+    color: #3b5998;
+    margin-bottom: 20px;
+}
+
+h3 {
+    color: #3b5998;
+}
+
+
+/* Form styling */
+
+.form-control {
+    border-radius: 10px;
+    border: 1px solid #dddfe2;
+}
+
+.btn-primary {
+    background-color: #3b5998;
+    border-color: #3b5998;
+    border-radius: 20px;
+}
+
+.btn-primary:hover {
+    background-color: #2d4373;
+    border-color: #2d4373;
+}
+
+
+/* Expense list styles */
+
+.expense-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.expense-item {
+    background-color: #f7f7f7;
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.expense-item form {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.expense-item:hover {
+    background-color: #e9ebee;
+}
+
+.expense-amount {
+    font-weight: bold;
+    color: #3b5998;
+}
+
+
+/* Summary card styles */
+
+.summary-card {
+    background-color: #f7f7f7;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.summary-card h3 {
+    color: #3b5998;
+    margin-bottom: 10px;
+}
+
+
+/* Button alignment */
+
+.expense-item .btn {
+    margin-left: 10px;
+    flex-shrink: 0;
+}
+
+.alert {
+    width: fit-content;
+    margin: 0 auto;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+}
+
+
+/* Updated Chart container styles */
+
+.chart {
+    display: flex;
+    align-items: flex-end;
+    height: 300px;
+    /* Adjust height as needed */
+    margin-bottom: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+    padding: 10px;
+    justify-content: space-evenly;
+    /* Space bars evenly */
+}
+
+
+/* Bar styles with different colors */
+
+.chart .bar {
+    margin-right: 5px;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    border-radius: 4px;
+    transition: height 0.3s ease, background-color 0.3s ease;
+}
+
+.chart .bar:nth-child(1) {
+    background-color: #4CAF50;
+}
+
+
+/* Green */
+
+.chart .bar:nth-child(2) {
+    background-color: #2196F3;
+}
+
+
+/* Blue */
+
+.chart .bar:nth-child(3) {
+    background-color: #FFC107;
+}
+
+
+/* Yellow */
+
+.chart .bar:nth-child(4) {
+    background-color: #FF5722;
+}
+
+
+/* Orange */
+
+.chart .bar:nth-child(5) {
+    background-color: #9C27B0;
+}
+
+
+/* Purple */
+
+.chart .bar:nth-child(6) {
+    background-color: #3F51B5;
+}
+
+
+/* Indigo */
+
+.chart .bar:nth-child(7) {
+    background-color: #E91E63;
+}
+
+
+/* Pink */
+
+.chart .bar:nth-child(8) {
+    background-color: #00BCD4;
+}
+
+
+/* Cyan */
+
+.chart .bar:nth-child(9) {
+    background-color: #8BC34A;
+}
+
+
+/* Light Green */
+
+.chart .bar:nth-child(10) {
+    background-color: #FFEB3B;
+}
+
+
+/* Bright Yellow */
