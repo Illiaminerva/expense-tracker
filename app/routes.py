@@ -14,9 +14,10 @@ def load_user(user_id):
 @login_required
 def index():
     expenses = list(mongo.db.expenses.find({'user_id': current_user.get_id()}))
+    categories = mongo.db.expenses.distinct('category')
     total_expenses = sum(expense['amount'] for expense in expenses)
     form = ExpenseForm()
-    return render_template('index.html', expenses=expenses, total_expenses=total_expenses, form=form)
+    return render_template('index.html', form=form, expenses=expenses, total_expenses=total_expenses, categories=categories)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -54,14 +55,19 @@ def logout():
 def add_expense():
     form = ExpenseForm()
     if form.validate_on_submit():
-        mongo.db.expenses.insert_one({
+        category = request.form.get('category')
+        if category == 'new':
+            category = request.form.get('new_category')
+        
+        expense = {
             'user_id': current_user.get_id(),
             'description': form.description.data,
             'amount': float(form.amount.data),
-            'category': form.category.data,
-            'date': str(form.date.data)
-        })
-        flash('Expense added successfully!')
+            'category': category,
+            'date': form.date.data.strftime('%Y-%m-%d')  # Ensure date is stored as a string
+        }
+        mongo.db.expenses.insert_one(expense)
+        flash('Expense added successfully!', 'success')
     return redirect(url_for('index'))
 
 @app.route('/delete_category/<category_id>')

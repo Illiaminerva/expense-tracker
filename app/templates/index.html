@@ -17,7 +17,17 @@
         </div>
         <div class="mb-4">
             {{ form.category.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.category(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            <select name="category" id="category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+                <option value="">Select a category</option>
+                {% for category in categories %}
+                    <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+                <option value="new">Add new category</option>
+            </select>
+        </div>
+        <div id="new-category-input" class="mb-4" style="display: none;">
+            <label for="new_category" class="block text-sm font-medium text-gray-700">New Category</label>
+            <input type="text" name="new_category" id="new_category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
         </div>
         <div class="mb-4">
             {{ form.date.label(class="block text-sm font-medium text-gray-700") }}
@@ -44,4 +54,15 @@
         {% endfor %}
     </ul>
 </div>
+
+<script>
+    document.getElementById('category').addEventListener('change', function() {
+        var newCategoryInput = document.getElementById('new-category-input');
+        if (this.value === 'new') {
+            newCategoryInput.style.display = 'block';
+        } else {
+            newCategoryInput.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}
