@@ -1,68 +1,55 @@
-{% extends "base.html" %}
-
-{% block content %}
-<h2 class="text-3xl font-bold mb-4">Your Expenses</h2>
+{% extends "base.html" %} {% block content %}
+<h2 class="text-3xl font-bold mb-4">Expense Tracker</h2>
 
 <div class="bg-white p-6 rounded shadow-md mb-6">
-    <h3 class="text-xl font-semibold mb-2">Add New Expense</h3>
+    <h3 class="text-xl font-semibold mb-4">Record New Expense</h3>
     <form method="POST" action="{{ url_for('add_expense') }}">
         {{ form.hidden_tag() }}
         <div class="mb-4">
-            {{ form.description.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.description(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.description.label(class="block text-sm font-medium text-gray-700") }} {{ form.description(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", placeholder="e.g., Grocery Shopping") }}
         </div>
         <div class="mb-4">
-            {{ form.amount.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.amount(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.amount.label(class="block text-sm font-medium text-gray-700") }} {{ form.amount(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", placeholder="0.00") }}
         </div>
         <div class="mb-4">
-            {{ form.category.label(class="block text-sm font-medium text-gray-700") }}
-            <select name="category" id="category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
-                <option value="">Select a category</option>
-                {% for category in categories %}
-                    <option value="{{ category }}">{{ category }}</option>
-                {% endfor %}
-                <option value="new">Add new category</option>
-            </select>
-        </div>
-        <div id="new-category-input" class="mb-4" style="display: none;">
-            <label for="new_category" class="block text-sm font-medium text-gray-700">New Category</label>
-            <input type="text" name="new_category" id="new_category" class="mt-1 block w-full p-2 border border-gray-300 rounded-md">
+            {{ form.category.label(class="block text-sm font-medium text-gray-700") }} {{ form.category(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
         </div>
         <div class="mb-4">
-            {{ form.date.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.date(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", type="date") }}
+            {{ form.date.label(class="block text-sm font-medium text-gray-700") }} {{ form.date(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", type="date") }}
         </div>
-        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Add Expense</button>
+        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Record Expense</button>
     </form>
 </div>
 
 <div class="bg-white p-6 rounded shadow-md">
-    <h3 class="text-xl font-semibold mb-2">Total Expenses: ${{ "%.2f"|format(total_expenses) }}</h3>
+    <h3 class="text-xl font-semibold mb-4">Expense Overview</h3>
+    <p class="text-lg mb-4">Total Spending: <span class="font-semibold">${{ "%.2f"|format(total_expenses) }}</span></p>
+
     <ul class="space-y-4">
         {% for expense in expenses %}
-        <li class="flex justify-between items-center bg-gray-100 p-4 rounded-md">
-            <form method="POST" action="{{ url_for('edit_expense', expense_id=expense['_id']) }}" class="flex space-x-2 w-full">
-                <input type="text" name="description" value="{{ expense['description'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" required>
-                <input type="number" name="amount" value="{{ expense['amount'] }}" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md" required>
-                <input type="text" name="category" value="{{ expense['category'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" required>
+        <li class="flex justify-between items-center bg-gray-50 p-4 rounded-md hover:bg-gray-100 transition-colors">
+            <form method="POST" action="{{ url_for('edit_expense', expense_id=expense['_id']) }}" class="flex space-x-3 w-full">
+                <input type="text" name="description" value="{{ expense['description'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" placeholder="Description" required>
+
+                <input type="number" name="amount" value="{{ expense['amount'] }}" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md" placeholder="Amount" required>
+
+                <select name="category" class="flex-1 p-2 border border-gray-300 rounded-md" required>
+                    <option value="needs" {% if expense['category'] == 'needs' %}selected{% endif %}>Essential Needs</option>
+                    <option value="wants" {% if expense['category'] == 'wants' %}selected{% endif %}>Lifestyle & Wants</option>
+                    <option value="savings" {% if expense['category'] == 'savings' %}selected{% endif %}>Savings & Investments</option>
+                </select>
+
                 <input type="date" name="date" value="{{ expense['date'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" required>
-                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600">Save</button>
+
+                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors">
+                    Update
+                </button>
             </form>
-            <a href="{{ url_for('delete_expense', expense_id=expense['_id']) }}" class="ml-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600">Delete</a>
+            <a href="{{ url_for('delete_expense', expense_id=expense['_id']) }}" class="ml-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition-colors" onclick="return confirm('Are you sure you want to delete this expense?')">
+                Delete
+            </a>
         </li>
         {% endfor %}
     </ul>
 </div>
-
-<script>
-    document.getElementById('category').addEventListener('change', function() {
-        var newCategoryInput = document.getElementById('new-category-input');
-        if (this.value === 'new') {
-            newCategoryInput.style.display = 'block';
-        } else {
-            newCategoryInput.style.display = 'none';
-        }
-    });
-</script>
 {% endblock %}

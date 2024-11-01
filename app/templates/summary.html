@@ -1,86 +1,276 @@
-{% extends "base.html" %}
-
-{% block content %}
-<h2 class="text-3xl font-bold mb-4">Expense Summary</h2>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-white p-6 rounded shadow-md">
-        <h3 class="text-xl font-semibold mb-2">Expenses by Category</h3>
-        <canvas id="categoryChart"></canvas>
+{% extends "base.html" %} {% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900">Financial Analytics</h2>
+        <p class="mt-2 text-sm text-gray-600">Track and analyze your spending patterns</p>
     </div>
-    <div class="bg-white p-6 rounded shadow-md">
-        <h3 class="text-xl font-semibold mb-2">Expenses Over Time</h3>
-        <canvas id="timeChart"></canvas>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+            <h4 class="text-sm font-medium text-gray-500 uppercase">Total Spending</h4>
+            <p class="mt-2 text-3xl font-bold text-gray-900">${{ "%.2f"|format(total_expenses) }}</p>
+            <p class="mt-1 text-sm text-gray-600">All time total</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+            <h4 class="text-sm font-medium text-gray-500 uppercase">Average Monthly</h4>
+            <p class="mt-2 text-3xl font-bold text-gray-900">${{ "%.2f"|format(monthly_average) }}</p>
+            <p class="mt-1 text-sm text-gray-600">Past 12 months</p>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Spending Trends Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Spending Trends</h3>
+                    <p class="text-sm text-gray-600">Monthly patterns over time</p>
+                </div>
+                <select id="timeRange" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="3">Last 3 Months</option>
+                    <option value="6" selected>Last 6 Months</option>
+                    <option value="12">Last 12 Months</option>
+                </select>
+            </div>
+            <div class="h-80 relative">
+                <canvas id="timeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Category Distribution -->
+        <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Spending Distribution</h3>
+                    <p class="text-sm text-gray-600">Category breakdown</p>
+                </div>
+                <select id="categoryTimeRange" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option value="3">Last 3 Months</option>
+                    <option value="6" selected>Last 6 Months</option>
+                    <option value="12">Last 12 Months</option>
+                </select>
+            </div>
+            <div class="h-80 relative">
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <!-- Budget Guidelines -->
+            <div class="mt-6 grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-500">Needs (50%)</div>
+                    <div class="mt-1 text-lg font-semibold text-gray-900" id="needsPercentage">--%</div>
+                    <div class="text-xs text-gray-600" id="needsAmount">$0.00</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-500">Wants (30%)</div>
+                    <div class="mt-1 text-lg font-semibold text-gray-900" id="wantsPercentage">--%</div>
+                    <div class="text-xs text-gray-600" id="wantsAmount">$0.00</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-500">Savings (20%)</div>
+                    <div class="mt-1 text-lg font-semibold text-gray-900" id="savingsPercentage">--%</div>
+                    <div class="text-xs text-gray-600" id="savingsAmount">$0.00</div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Include Chart.js -->
+<!-- Chart Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-    var categoryData = JSON.parse(`{{ category_data | tojson | safe }}`);
-    var timeData = JSON.parse(`{{ time_data | tojson | safe }}`);
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get the data
+        const timeData = {{ time_data|tojson|safe }};
+        const categoryData = {{ category_data|tojson|safe }};
 
-    var ctx1 = document.getElementById('categoryChart').getContext('2d');
-    var categoryChart = new Chart(ctx1, {
-        type: 'doughnut',
-        data: {
-            labels: categoryData.labels,
-            datasets: [{
-                data: categoryData.values,
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.2)',
-                    'rgba(54, 162, 235, 0.2)',
-                    'rgba(255, 206, 86, 0.2)',
-                    'rgba(75, 192, 192, 0.2)',
-                    'rgba(153, 102, 255, 0.2)',
-                    'rgba(255, 159, 64, 0.2)'
-                ],
-                borderColor: [
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 206, 86, 1)',
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(153, 102, 255, 1)',
-                    'rgba(255, 159, 64, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
+        // Time Chart
+        const timeCtx = document.getElementById('timeChart');
+        const timeChart = new Chart(timeCtx, {
+            type: 'line',
+            data: {
+                labels: timeData.labels,
+                datasets: [{
+                    label: 'Monthly Spending',
+                    data: timeData.values,
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '$ ' + context.raw.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$ ' + value.toFixed(2);
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
 
-    var ctx2 = document.getElementById('timeChart').getContext('2d');
-    var timeChart = new Chart(ctx2, {
-        type: 'line',
-        data: {
-            labels: timeData.labels,
-            datasets: [{
-                label: 'Expenses Over Time',
-                data: timeData.values,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                fill: true,
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true
+        // Category Chart
+        const categoryCtx = document.getElementById('categoryChart');
+        const categoryChart = new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryData.labels,
+                datasets: [{
+                    data: categoryData.values,
+                    backgroundColor: [
+                        'rgb(59, 130, 246)',  // Blue
+                        'rgb(16, 185, 129)',  // Green
+                        'rgb(245, 158, 11)'   // Yellow
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `$ ${value.toFixed(2)} (${percentage}%)`;
+                            }
+                        }
+                    }
                 }
             }
+        });
+
+        // Time range filter for spending trends
+        const timeRange = document.getElementById('timeRange');
+        if (timeRange) {
+            timeRange.addEventListener('change', function() {
+                const months = parseInt(this.value);
+                const filteredData = filterDataByMonths(timeData, months);
+                timeChart.data.labels = filteredData.labels;
+                timeChart.data.datasets[0].data = filteredData.values;
+                timeChart.update();
+            });
         }
+
+        function filterDataByMonths(data, months) {
+            return {
+                labels: data.labels.slice(-months),
+                values: data.values.slice(-months)
+            };
+        }
+
+        // Category time range filter
+        const categoryTimeRange = document.getElementById('categoryTimeRange');
+        if (categoryTimeRange) {
+            categoryTimeRange.addEventListener('change', function() {
+                const months = parseInt(this.value);
+                const filteredData = getCategoryDataForPeriod(months);
+                
+                // Update chart
+                categoryChart.data.labels = filteredData.labels;
+                categoryChart.data.datasets[0].data = filteredData.values;
+                categoryChart.update();
+                
+                // Update guidelines
+                updateBudgetGuidelines(filteredData);
+            });
+        }
+
+        function getCategoryDataForPeriod(months) {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(endDate.getMonth() - months);
+
+            // Filter expenses within the time period
+            const filteredExpenses = {};
+            
+            categoryData.labels.forEach((category, index) => {
+                const dates = categoryData.dates.filter(date => {
+                    const expenseDate = new Date(date);
+                    return expenseDate >= startDate && expenseDate <= endDate;
+                });
+                
+                if (dates.length > 0) {
+                    // Calculate total for this category within the date range
+                    let total = 0;
+                    const monthlyData = categoryData.monthly_data[category];
+                    
+                    for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
+                        const monthKey = d.toISOString().slice(0, 7); // YYYY-MM format
+                        if (monthlyData[monthKey]) {
+                            total += monthlyData[monthKey];
+                        }
+                    }
+                    
+                    if (total > 0) {
+                        filteredExpenses[category] = total;
+                    }
+                }
+            });
+
+            return {
+                labels: Object.keys(filteredExpenses),
+                values: Object.values(filteredExpenses)
+            };
+        }
+
+        function updateBudgetGuidelines(filteredData) {
+            const total = filteredData.values.reduce((a, b) => a + b, 0);
+            const amounts = {
+                needs: 0,
+                wants: 0,
+                savings: 0
+            };
+
+            filteredData.labels.forEach((category, index) => {
+                const amount = filteredData.values[index];
+                amounts[category.toLowerCase()] = amount;
+            });
+
+            // Update displays
+            Object.keys(amounts).forEach(category => {
+                const percentage = total > 0 ? (amounts[category] / total * 100) : 0;
+                document.getElementById(`${category}Percentage`).textContent = `${percentage.toFixed(1)}%`;
+                document.getElementById(`${category}Amount`).textContent = `$${amounts[category].toFixed(2)}`;
+                
+                const element = document.getElementById(`${category}Percentage`);
+                element.classList.remove('text-green-600', 'text-red-600');
+                
+                const guidelines = { needs: 50, wants: 30, savings: 20 };
+                if (category === 'savings') {
+                    element.classList.add(percentage >= guidelines[category] ? 'text-green-600' : 'text-red-600');
+                } else {
+                    element.classList.add(percentage <= guidelines[category] ? 'text-green-600' : 'text-red-600');
+                }
+            });
+        }
+
+        // Initial updates
+        const initialFilteredData = getCategoryDataForPeriod(6);
+        categoryChart.data.labels = initialFilteredData.labels;
+        categoryChart.data.datasets[0].data = initialFilteredData.values;
+        categoryChart.update();
+        updateBudgetGuidelines(initialFilteredData);
     });
 </script>
 {% endblock %}
-
