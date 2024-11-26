@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+env/
+expense-tracker-env/
+venv/
+
+# Node
+package-lock.json
+node_modules/
+
+# System
+.DS_Store
