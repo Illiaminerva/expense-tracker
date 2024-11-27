@@ -4,10 +4,12 @@
     <form method="POST" action="{{ url_for('login') }}" class="w-full max-w-sm">
         {{ form.hidden_tag() }}
         <div class="mb-4">
-            {{ form.email.label(class="block text-sm font-medium text-gray-700") }} {{ form.email(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.email.label(class="block text-sm font-medium text-gray-700") }} 
+            {{ form.email(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
         </div>
         <div class="mb-4">
-            {{ form.password.label(class="block text-sm font-medium text-gray-700") }} {{ form.password(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.password.label(class="block text-sm font-medium text-gray-700") }} 
+            {{ form.password(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
         </div>
         <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Login</button>
     </form>

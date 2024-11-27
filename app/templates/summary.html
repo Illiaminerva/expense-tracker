@@ -82,7 +82,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Get the data
+        // Get the data for charts
         const timeData = {{ time_data|tojson|safe }};
         const categoryData = {{ category_data|tojson|safe }};
 
