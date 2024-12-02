@@ -59,17 +59,17 @@
             <!-- Budget Guidelines -->
             <div class="mt-6 grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div class="text-center">
-                    <div class="text-sm font-medium text-gray-500">Needs (50%)</div>
+                    <div class="text-sm font-medium text-gray-500">Needs ({{ budget_settings.needs }}%)</div>
                     <div class="mt-1 text-lg font-semibold text-gray-900" id="needsPercentage">--%</div>
                     <div class="text-xs text-gray-600" id="needsAmount">$0.00</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-sm font-medium text-gray-500">Wants (30%)</div>
+                    <div class="text-sm font-medium text-gray-500">Wants ({{ budget_settings.wants }}%)</div>
                     <div class="mt-1 text-lg font-semibold text-gray-900" id="wantsPercentage">--%</div>
                     <div class="text-xs text-gray-600" id="wantsAmount">$0.00</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-sm font-medium text-gray-500">Savings (20%)</div>
+                    <div class="text-sm font-medium text-gray-500">Savings ({{ budget_settings.savings }}%)</div>
                     <div class="mt-1 text-lg font-semibold text-gray-900" id="savingsPercentage">--%</div>
                     <div class="text-xs text-gray-600" id="savingsAmount">$0.00</div>
                 </div>
@@ -234,6 +234,13 @@
             };
         }
 
+        // Pass the user-defined budget settings to JavaScript
+        const guidelines = {
+            needs: {{ budget_settings.needs }},
+            wants: {{ budget_settings.wants }},
+            savings: {{ budget_settings.savings }}
+        };
+
         function updateBudgetGuidelines(filteredData) {
             const total = filteredData.values.reduce((a, b) => a + b, 0);
             const amounts = {
@@ -256,7 +263,7 @@
                 const element = document.getElementById(`${category}Percentage`);
                 element.classList.remove('text-green-600', 'text-red-600');
                 
-                const guidelines = { needs: 50, wants: 30, savings: 20 };
+                // Use the user-defined percentages for color coding
                 if (category === 'savings') {
                     element.classList.add(percentage >= guidelines[category] ? 'text-green-600' : 'text-red-600');
                 } else {

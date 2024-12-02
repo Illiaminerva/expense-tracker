@@ -36,3 +36,9 @@ class ExpenseForm(FlaskForm):
     )
     date = DateField("Transaction Date", format="%Y-%m-%d", validators=[DataRequired()])
     submit = SubmitField("Record Expense")
+
+
+class BudgetSettingsForm(FlaskForm):
+    needs_percentage = FloatField("What percentage of your income do you want to allocate for Essential Needs (e.g., housing, food)?", default=50.0, validators=[DataRequired()])
+    savings_percentage = FloatField("What percentage of your income do you want to allocate for Savings & Investments?", default=20.0, validators=[DataRequired()])
+    submit = SubmitField("Save Settings")

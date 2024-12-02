@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import app, mongo, login_manager
-from app.forms import LoginForm, RegistrationForm, ExpenseForm, CategoryForm
+from app.forms import LoginForm, RegistrationForm, ExpenseForm, CategoryForm, BudgetSettingsForm
 from app.models import User
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -146,6 +146,10 @@ def summary():
     expenses = list(mongo.db.expenses.find({"user_id": current_user.get_id()}))
     total_expenses = sum(e['amount'] for e in expenses)  # Calculate total expenses
     
+    # Fetch user-defined budget settings
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+    budget_settings = user_settings.get("budget_settings", {"needs": 50, "wants": 30, "savings": 20})
+
     # Define the date range for the summary (last 12 months)
     end_date = datetime.now()
     start_date = end_date - relativedelta(months=11)
@@ -222,5 +226,42 @@ def summary():
         total_expenses=total_expenses,
         monthly_average=monthly_average,
         time_data=time_data,
-        category_data=category_data
+        category_data=category_data,
+        budget_settings=budget_settings
     )
+
+
+@app.route("/budget_settings", methods=["GET", "POST"])
+@login_required
+def budget_settings():
+    form = BudgetSettingsForm()
+    if form.validate_on_submit():
+        # Calculate wants percentage
+        wants_percentage = 100 - (form.needs_percentage.data + form.savings_percentage.data)
+        
+        # Ensure the total does not exceed 100%
+        if wants_percentage < 0:
+            flash("The total percentages cannot exceed 100%. Please adjust your inputs.", "error")
+            return redirect(url_for("budget_settings"))
+
+        # Save the settings to the database
+        mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": {
+                "budget_settings": {
+                    "needs": form.needs_percentage.data,
+                    "wants": wants_percentage,
+                    "savings": form.savings_percentage.data
+                }
+            }}
+        )
+        flash("Budget settings updated successfully!", "success")
+        return redirect(url_for("index"))
+    
+    # Load current settings if they exist
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+    if user_settings and "budget_settings" in user_settings:
+        form.needs_percentage.data = user_settings["budget_settings"]["needs"]
+        form.savings_percentage.data = user_settings["budget_settings"]["savings"]
+
+    return render_template("budget_settings.html", form=form)
