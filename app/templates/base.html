@@ -17,6 +17,7 @@
             <nav class="flex items-center space-x-4">
                 <a href="{{ url_for('index') }}" class="hover:text-gray-200">Home</a>
                 <a href="{{ url_for('budget_settings') }}" class="hover:text-gray-200">Budget Settings</a>
+                <a href="{{ url_for('set_savings_goal') }}" class="hover:text-gray-200">Set Savings Goal</a>
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('summary') }}" class="hover:text-gray-200">Summary</a>
                     <a href="{{ url_for('logout') }}" class="hover:text-gray-200">Logout</a>

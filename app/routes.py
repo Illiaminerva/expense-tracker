@@ -265,3 +265,72 @@ def budget_settings():
         form.savings_percentage.data = user_settings["budget_settings"]["savings"]
 
     return render_template("budget_settings.html", form=form)
+
+
+@app.route("/set_savings_goal", methods=["GET", "POST"])
+@login_required
+def set_savings_goal():
+    """Render the savings goal form and handle submissions."""
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+
+    # Retrieve savings goal
+    savings_goal = user_settings.get("savings_goal", {"goal_amount": 0, "start_date": "", "end_date": ""})
+
+    # Initialize total savings and savings data
+    total_savings = 0
+    savings_data = {
+        "dates": [],
+        "cumulative_amounts": []
+    }
+
+    if request.method == "POST":
+        # Handle setting a new savings goal
+        goal_name = request.form.get("goal_name", "")
+        goal_amount = float(request.form.get("goal_amount", 0))
+        start_date = request.form.get("start_date", "")
+        end_date = request.form.get("end_date", "")
+
+        # Update the savings goal in the database
+        mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": {
+                "savings_goal": {
+                    "goal_name": goal_name,
+                    "goal_amount": goal_amount,
+                    "start_date": start_date,
+                    "end_date": end_date
+                }
+            }}
+        )
+        flash("Savings goal set successfully!", "success")
+        return redirect(url_for("set_savings_goal"))
+
+    # Calculate total savings from expenses in the "savings" category within the date range
+    expenses = list(mongo.db.expenses.find({"user_id": str(current_user.get_id()), "category": "savings"}))
+
+    # Filter expenses within the savings goal date range and sort by date
+    if savings_goal['start_date'] and savings_goal['end_date']:
+        start_date_obj = datetime.strptime(savings_goal['start_date'], '%Y-%m-%d')
+        end_date_obj = datetime.strptime(savings_goal['end_date'], '%Y-%m-%d')
+        filtered_expenses = [expense for expense in expenses if start_date_obj <= datetime.strptime(expense['date'], '%Y-%m-%d') <= end_date_obj]
+    else:
+        filtered_expenses = expenses
+
+    # Sort expenses by date
+    filtered_expenses.sort(key=lambda x: x['date'])
+
+    # Prepare savings data for the chart
+    cumulative_amount = 0
+    for expense in filtered_expenses:
+        expense_date = expense['date']
+        amount = expense['amount']
+        cumulative_amount += amount
+        savings_data['dates'].append(expense_date)
+        savings_data['cumulative_amounts'].append(cumulative_amount)
+
+    total_savings = cumulative_amount
+
+    # Calculate progress towards the savings goal
+    progress = (total_savings / savings_goal['goal_amount'] * 100) if savings_goal['goal_amount'] > 0 else 0
+
+    return render_template("set_savings_goal.html", savings_goal=savings_goal, progress=progress, savings_data=savings_data, total_savings=total_savings)
