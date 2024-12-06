@@ -1,16 +1,18 @@
 # Expense Tracker
 
-A Flask-based expense tracking application that helps users monitor their spending habits using the 50/30/20 rule (Needs/Wants/Savings). Features an intuitive dashboard with real-time visualizations and spending analysis.
+A Flask-based expense tracking application that helps users monitor their spending habits using customizable budgeting rules and savings goals. Features an intuitive dashboard with real-time visualizations and spending analysis.
 
 ## Features
 
-- **User Authentication**: Secure registration and login system
-- **Expense Management**: Add, edit, and delete expenses
-- **Smart Categorization**: Automatic categorization using the 50/30/20 rule
+- **User Authentication**: Secure registration and login system.
+- **Expense Management**: Add, edit, and delete expenses seamlessly.
+- **Customizable Budgeting**: Adjust the default 50/30/20 rule (Needs/Wants/Savings) to fit your preferences.
+- **Savings Goals**: Set savings goals and track your progress with visual indicators.
 - **Visual Analytics**: 
-  - Monthly spending trends
-  - Category distribution charts
-  - Budget adherence indicators
+  - Monthly spending trends.
+  - Category distribution charts.
+  - Budget adherence indicators.
+  - Savings goal tracking.
 
 ## Quick Start
 
@@ -60,14 +62,15 @@ python run.py
 
 ## Usage
 
-1. **Register/Login**: Create an account or login to access your dashboard
+1. **Register/Login**: Create an account or login to access your dashboard.
 2. **Add Expenses**: 
-   - Enter amount, description, and date
-   - Select category (Needs/Wants/Savings)
+   - Enter amount, description, and date.
+   - Select category (Needs/Wants/Savings).
 3. **View Analytics**:
-   - Check monthly spending trends
-   - Monitor category distribution
-   - Track budget adherence
+   - Check monthly spending trends.
+   - Monitor category distribution.
+   - Visualize budget adherence.
+   - Track budget adherence.
 
 ## Project Structure
 ```
