@@ -144,3 +144,56 @@ def test_summary_page(auth_client, mongo, test_user):
     assert b'Total Spending' in content
     assert b'300.00' in content  
     assert b'Average Monthly' in content  
+
+# Test the budget settings page renders correctly
+def test_budget_settings_page(auth_client):
+    response = auth_client.get('/budget_settings')
+    assert response.status_code == 200
+    assert b'Budget Settings' in response.data
+
+# Test saving budget settings
+def test_save_budget_settings(auth_client, mongo, test_user):
+    # Ensure the user is logged in and can access the budget settings page
+    response = auth_client.get('/budget_settings')
+    assert response.status_code == 200
+
+    # Submit the budget settings form
+    response = auth_client.post('/budget_settings', data={
+        'needs_percentage': 40.0,
+        'savings_percentage': 30.0
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+
+    # Verify that the data is saved
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(test_user['_id'])})
+    assert user_settings['budget_settings']['needs'] == 40.0
+    assert user_settings['budget_settings']['savings'] == 30.0
+
+# Test the savings goal page 
+def test_savings_goal_page(auth_client):
+    response = auth_client.get('/set_savings_goal')
+    assert response.status_code == 200
+    assert b'Set Your Savings Goal' in response.data
+
+# Test saving a savings goal
+def test_save_savings_goal(auth_client, mongo, test_user):
+    # Ensure the user is logged in and can access the savings goal page
+    response = auth_client.get('/set_savings_goal')
+    assert response.status_code == 200
+
+    # Submit the savings goal form
+    response = auth_client.post('/set_savings_goal', data={
+        'goal_name': 'Emergency Fund',
+        'goal_amount': 5000.00,
+        'start_date': (datetime.now()).strftime('%Y-%m-%d'),
+        'end_date': (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+    }, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b'Savings goal set successfully!' in response.data 
+
+    # Verify the savings goal was saved in the database
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(test_user['_id'])})
+    assert user_settings['savings_goal']['goal_name'] == 'Emergency Fund'
+    assert user_settings['savings_goal']['goal_amount'] == 5000.00
