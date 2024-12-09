@@ -60,6 +60,14 @@ python run.py
 
 7. Visit `http://127.0.0.1:5000` in your browser
 
+## Run Tests
+
+To ensure everything is working correctly, run the test suite:
+```bash
+python run.py
+```
+This will execute all tests, including functionality for savings goals, expense management, and budgeting rules.
+
 ## Usage
 
 1. **Register/Login**: Create an account or login to access your dashboard.
