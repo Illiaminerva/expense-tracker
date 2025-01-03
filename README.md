@@ -64,7 +64,7 @@ python run.py
 
 To ensure everything is working correctly, run the test suite:
 ```bash
-python run.py
+pytest
 ```
 This will execute all tests, including functionality for savings goals, expense management, and budgeting rules.
 
