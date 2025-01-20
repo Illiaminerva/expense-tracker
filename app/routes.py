@@ -222,7 +222,7 @@ def summary():
 
     # Render the summary template with the calculated data
     return render_template(
-        "summary.html",
+        "onboarding.html",
         total_expenses=total_expenses,
         monthly_average=monthly_average,
         time_data=time_data,
