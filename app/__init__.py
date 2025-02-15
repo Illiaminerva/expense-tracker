@@ -1,10 +1,16 @@
 from flask import Flask
 from flask_login import LoginManager
 from flask_pymongo import PyMongo
+from dotenv import load_dotenv
+import os
+from dotenv import load_dotenv
+load_dotenv() 
 
 # Initialize the Flask application
 app = Flask(__name__)
-app.config.from_object('config.Config')
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/mydatabase")
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key") 
+
 
 # Initialize PyMongo for MongoDB interactions
 mongo = PyMongo(app)

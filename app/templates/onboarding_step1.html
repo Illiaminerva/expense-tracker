@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto py-8">
+    <h2 class="text-3xl font-bold mb-4">Set Your Budget Settings</h2>
+    <p class="mb-4">Please enter your budget for needs and savings.</p>
+
+    <form method="POST">
+        <div class="mb-4">
+            <label for="budget_needs" class="block text-sm font-medium text-gray-700">What percentage of your income do you want to allocate for Essential Needs (e.g., housing, food)?</label>
+            <input type="float" name="budget_needs" id="budget_needs" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your expected percentage for Essential Needs">
+        </div>
+        <div class="mb-4">
+            <label for="budget_savings" class="block text-sm font-medium text-gray-700">What percentage of your income do you want to allocate for Savings & Investments?</label>
+            <input type="float" name="budget_savings" id="budget_savings" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your expected percentage for Savings & Investments">
+        </div>
+        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Next</button>
+    </form>
+
+    <div class="mt-4">
+        <a href="{{ url_for('index') }}" class="text-blue-500">Skip Onboarding</a>
+    </div>
+</div>
+{% endblock %}

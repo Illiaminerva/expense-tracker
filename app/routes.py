@@ -2,7 +2,7 @@ from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import app, mongo, login_manager
-from app.forms import LoginForm, RegistrationForm, ExpenseForm, CategoryForm, BudgetSettingsForm
+from app.forms import LoginForm, RegistrationForm, ExpenseForm, BudgetSettingsForm
 from app.models import User
 from bson.objectid import ObjectId
 from datetime import datetime
@@ -64,9 +64,14 @@ def register():
         if existing_user is None:
             # Hash the password and store the new user in the database
             hash_pass = generate_password_hash(form.password.data)
-            mongo.db.users.insert_one({"email": form.email.data, "password": hash_pass})
-            flash("Registration successful! You can now log in.", "success")
-            return redirect(url_for("login"))
+            user_id = mongo.db.users.insert_one({"email": form.email.data, "password": hash_pass}).inserted_id
+            
+            # Log the user in
+            user_obj = User(str(user_id))
+            login_user(user_obj)
+
+            flash("Registration successful! Please complete your onboarding.", "success")
+            return redirect(url_for("onboarding_step1"))  # Redirect to the onboarding page
         else:
             flash("Email already registered", "error")  # Flash an error if the email exists
     else:
@@ -334,3 +339,75 @@ def set_savings_goal():
     progress = (total_savings / savings_goal['goal_amount'] * 100) if savings_goal['goal_amount'] > 0 else 0
 
     return render_template("set_savings_goal.html", savings_goal=savings_goal, progress=progress, savings_data=savings_data, total_savings=total_savings)
+
+
+@app.route("/onboarding/step1", methods=["GET", "POST"])
+@login_required
+def onboarding_step1():
+    if request.method == "POST":
+        budget_needs = float(request.form.get("budget_needs"))
+        budget_savings = float(request.form.get("budget_savings"))
+        budget_wants = 100 - (budget_needs + budget_savings)  # Calculate savings budget
+
+        # Save budget settings to the user's settings in the database
+        mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": {
+                "budget_settings": {
+                    "needs": budget_needs,
+                    "wants": budget_wants,
+                    "savings": budget_savings
+                }
+            }}
+        )
+        return redirect(url_for("onboarding_step2"))  # Redirect to step 2
+
+    return render_template("onboarding_step1.html")  # Render step 1 template
+
+@app.route("/onboarding/step2", methods=["GET", "POST"])
+@login_required
+def onboarding_step2():
+    form = ExpenseForm()
+    if request.method == "POST":
+        if form.validate_on_submit():  # Validate form submission
+            first_expense = {
+            "description": form.description.data,
+            "amount": float(form.amount.data),
+            "category": form.category.data,
+            "user_id": current_user.get_id(),
+            "date": form.date.data.strftime('%Y-%m-%d') 
+        }
+
+        mongo.db.expenses.insert_one(first_expense)
+        return redirect(url_for("onboarding_step3"))
+
+    return render_template("onboarding_step2.html", form=form)  # Render step 2 template
+
+
+@app.route("/onboarding/step3", methods=["GET", "POST"])
+@login_required
+def onboarding_step3():
+    if request.method == "POST":
+        # Handle setting a new savings goal
+        goal_name = request.form.get("goal_name", "")
+        goal_amount = float(request.form.get("goal_amount", 0))
+        start_date = request.form.get("start_date", "")
+        end_date = request.form.get("end_date", "")
+
+        # Update the savings goal in the database
+        mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": {
+                "savings_goal": {
+                    "goal_name": goal_name,
+                    "goal_amount": goal_amount,
+                    "start_date": start_date,
+                    "end_date": end_date
+                }
+            }}
+        )
+
+        flash("Onboarding completed successfully!", "success")
+        return redirect(url_for("index"))  # Redirect to the main dashboard
+
+    return render_template("onboarding_step3.html")  # Render step 3 template
