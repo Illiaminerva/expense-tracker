@@ -18,9 +18,9 @@ class RegistrationForm(FlaskForm):
     submit = SubmitField("Register")
 
 
-class CategoryForm(FlaskForm):
-    name = StringField("Category Name", validators=[DataRequired()])
-    submit = SubmitField("Add Category")
+# class CategoryForm(FlaskForm):
+#     name = StringField("Category Name", validators=[DataRequired()])
+#     submit = SubmitField("Add Category")
 
 
 class ExpenseForm(FlaskForm):

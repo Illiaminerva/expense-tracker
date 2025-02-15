@@ -20,6 +20,7 @@
                 <a href="{{ url_for('set_savings_goal') }}" class="hover:text-gray-200">Set Savings Goal</a>
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('summary') }}" class="hover:text-gray-200">Summary</a>
+                    <a href="{{ url_for('onboarding_step1') }}" class="text-yellow-300 hover:text-yellow-400">Restart Onboarding</a>
                     <a href="{{ url_for('logout') }}" class="hover:text-gray-200">Logout</a>
                 {% else %}
                     <a href="{{ url_for('login') }}" class="hover:text-gray-200">Login</a>
