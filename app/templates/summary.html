@@ -73,6 +73,11 @@
                     <div class="mt-1 text-lg font-semibold text-gray-900" id="savingsPercentage">--%</div>
                     <div class="text-xs text-gray-600" id="savingsAmount">$0.00</div>
                 </div>
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-500">Investments ({{ budget_settings.investments }}%)</div>
+                    <div class="mt-1 text-lg font-semibold text-gray-900" id="investmentsPercentage">--%</div>
+                    <div class="text-xs text-gray-600" id="investmentsAmount">$0.00</div>
+                </div>
             </div>
         </div>
     </div>
@@ -138,7 +143,8 @@
                     backgroundColor: [
                         'rgb(59, 130, 246)',  // Blue
                         'rgb(16, 185, 129)',  // Green
-                        'rgb(245, 158, 11)'   // Yellow
+                        'rgb(245, 158, 11)',   // Yellow
+                        'rgb(139, 92, 246)'   // Purple
                     ]
                 }]
             },
@@ -238,7 +244,8 @@
         const guidelines = {
             needs: {{ budget_settings.needs }},
             wants: {{ budget_settings.wants }},
-            savings: {{ budget_settings.savings }}
+            savings: {{ budget_settings.savings }},
+            investments: {{ budget_settings.investments }}
         };
 
         function updateBudgetGuidelines(filteredData) {
@@ -246,7 +253,8 @@
             const amounts = {
                 needs: 0,
                 wants: 0,
-                savings: 0
+                savings: 0,
+                investments: 0
             };
 
             filteredData.labels.forEach((category, index) => {
@@ -264,7 +272,7 @@
                 element.classList.remove('text-green-600', 'text-red-600');
                 
                 // Use the user-defined percentages for color coding
-                if (category === 'savings') {
+                if (category === 'savings' || category === 'investments') {
                     element.classList.add(percentage >= guidelines[category] ? 'text-green-600' : 'text-red-600');
                 } else {
                     element.classList.add(percentage <= guidelines[category] ? 'text-green-600' : 'text-red-600');

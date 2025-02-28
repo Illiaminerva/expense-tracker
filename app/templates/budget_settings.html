@@ -3,18 +3,43 @@
 {% block content %}
 <div class="container mx-auto py-8">
     <h2 class="text-3xl font-bold mb-4">Budget Settings</h2>
-    <form method="POST">
+    <form method="POST" id="budget-form">
         {{ form.hidden_tag() }}
         <div class="mb-4">
             {{ form.needs_percentage.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.needs_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.needs_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
+        </div>
+        <div class="mb-4">
+            {{ form.wants_percentage.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form.wants_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
         </div>
         <div class="mb-4">
             {{ form.savings_percentage.label(class="block text-sm font-medium text-gray-700") }}
-            {{ form.savings_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+            {{ form.savings_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
         </div>
-        <p class="text-sm text-gray-600 mb-4">The percentage allocated for Lifestyle & Wants will be automatically calculated based on your inputs for other 2 categories.</p>
+        <div class="mb-4">
+            {{ form.investments_percentage.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form.investments_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", readonly=True) }}
+        </div>
         <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Save Settings</button>
     </form>
+</div>
+
+<script>
+    function updateInvestments() {
+        const needs = parseFloat(document.getElementById('needs_percentage').value) || 0;
+        const wants = parseFloat(document.getElementById('wants_percentage').value) || 0;
+        const savings = parseFloat(document.getElementById('savings_percentage').value) || 0;
+        const investments = 100 - needs - wants - savings;
+        
+        // Update the wants percentage field
+        document.getElementById('investments_percentage').value = investments >= 0 ? investments.toFixed(2) : 0; // Ensure it doesn't go negative
+
+        // Check for total exceeding 100%
+        if (investments < 0) {
+            alert("The total percentages cannot exceed 100%. Please adjust your inputs.");
+        }
+    }
+</script>
 </div>
 {% endblock %}

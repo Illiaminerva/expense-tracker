@@ -241,33 +241,39 @@ def summary():
 def budget_settings():
     form = BudgetSettingsForm()
     if form.validate_on_submit():
-        # Calculate wants percentage
-        wants_percentage = 100 - (form.needs_percentage.data + form.savings_percentage.data)
-        
+        budget_needs = round(form.needs_percentage.data, 2)
+        budget_savings = round(form.savings_percentage.data, 2)
+        budget_investments = round(form.investments_percentage.data, 2)
+        budget_wants = round(form.wants_percentage.data, 2)
+
         # Ensure the total does not exceed 100%
-        if wants_percentage < 0:
+        total_percentage = budget_needs + budget_savings + budget_investments + budget_wants
+        if total_percentage > 100:
             flash("The total percentages cannot exceed 100%. Please adjust your inputs.", "error")
             return redirect(url_for("budget_settings"))
 
-        # Save the settings to the database
+        # Save budget settings to the user's settings in the database
         mongo.db.users.update_one(
             {"_id": ObjectId(current_user.get_id())},
             {"$set": {
                 "budget_settings": {
-                    "needs": form.needs_percentage.data,
-                    "wants": wants_percentage,
-                    "savings": form.savings_percentage.data
+                    "needs": budget_needs,
+                    "savings": budget_savings,
+                    "investments": budget_investments,
+                    "wants": budget_wants
                 }
             }}
         )
         flash("Budget settings updated successfully!", "success")
         return redirect(url_for("index"))
-    
+
     # Load current settings if they exist
     user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
     if user_settings and "budget_settings" in user_settings:
-        form.needs_percentage.data = user_settings["budget_settings"]["needs"]
-        form.savings_percentage.data = user_settings["budget_settings"]["savings"]
+        form.needs_percentage.data = round(user_settings["budget_settings"]["needs"], 2)
+        form.wants_percentage.data = round(user_settings["budget_settings"].get("wants", 0), 2)
+        form.savings_percentage.data = round(user_settings["budget_settings"]["savings"], 2)
+        form.investments_percentage.data = round(user_settings["budget_settings"].get("investments", 0), 2)
 
     return render_template("budget_settings.html", form=form)
 
@@ -344,25 +350,40 @@ def set_savings_goal():
 @app.route("/onboarding/step1", methods=["GET", "POST"])
 @login_required
 def onboarding_step1():
-    if request.method == "POST":
-        budget_needs = float(request.form.get("budget_needs"))
-        budget_savings = float(request.form.get("budget_savings"))
-        budget_wants = 100 - (budget_needs + budget_savings)  # Calculate savings budget
+    """Handle budget settings during onboarding."""
+    form = BudgetSettingsForm()
 
-        # Save budget settings to the user's settings in the database
+    if form.validate_on_submit():
+        # Round input values to avoid floating-point errors
+        budget_needs = round(form.needs_percentage.data, 2)
+        budget_wants = round(form.wants_percentage.data, 2)
+        budget_savings = round(form.savings_percentage.data, 2)
+
+        # Calculate investments automatically
+        budget_investments = round(100 - (budget_needs + budget_wants + budget_savings), 2)
+
+        # Ensure total does not exceed 100%
+        if budget_investments < 0:
+            flash("The total percentages cannot exceed 100%. Please adjust your inputs.", "error")
+            return redirect(url_for("onboarding_step1"))
+
+        # Save budget settings to the user's database entry
         mongo.db.users.update_one(
             {"_id": ObjectId(current_user.get_id())},
             {"$set": {
                 "budget_settings": {
                     "needs": budget_needs,
                     "wants": budget_wants,
-                    "savings": budget_savings
+                    "savings": budget_savings,
+                    "investments": budget_investments
                 }
             }}
         )
-        return redirect(url_for("onboarding_step2"))  # Redirect to step 2
 
-    return render_template("onboarding_step1.html")  # Render step 1 template
+        flash("Budget settings saved successfully!", "success")
+        return redirect(url_for("onboarding_step2"))
+
+    return render_template("onboarding_step1.html", form=form)
 
 @app.route("/onboarding/step2", methods=["GET", "POST"])
 @login_required

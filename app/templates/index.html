@@ -36,7 +36,8 @@
                 <select name="category" class="flex-1 p-2 border border-gray-300 rounded-md" required>
                     <option value="needs" {% if expense['category'] == 'needs' %}selected{% endif %}>Essential Needs</option>
                     <option value="wants" {% if expense['category'] == 'wants' %}selected{% endif %}>Lifestyle & Wants</option>
-                    <option value="savings" {% if expense['category'] == 'savings' %}selected{% endif %}>Savings & Investments</option>
+                    <option value="savings" {% if expense['category'] == 'savings' %}selected{% endif %}>Savings</option>
+                    <option value="investments" {% if expense['category'] == 'investments' %}selected{% endif %}>Investments</option>
                 </select>
 
                 <input type="date" name="date" value="{{ expense['date'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" required>
