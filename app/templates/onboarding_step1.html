@@ -2,18 +2,29 @@
 
 {% block content %}
 <div class="container mx-auto py-8">
-    <h2 class="text-3xl font-bold mb-4">Set Your Budget Settings</h2>
-    <p class="mb-4">Please enter your budget for needs and savings.</p>
+    <h2 class="text-3xl font-bold mb-4">Set Your Budget Preferences</h2>
+    <p class="mb-4">Allocate percentages of your income for each category. The Investments percentage will be calculated automatically.</p>
 
-    <form method="POST">
+    <form method="POST" id="budget-form">
+        {{ form.hidden_tag() }}
+
         <div class="mb-4">
-            <label for="budget_needs" class="block text-sm font-medium text-gray-700">What percentage of your income do you want to allocate for Essential Needs (e.g., housing, food)?</label>
-            <input type="float" name="budget_needs" id="budget_needs" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your expected percentage for Essential Needs">
+            {{ form.needs_percentage.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form.needs_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
         </div>
         <div class="mb-4">
-            <label for="budget_savings" class="block text-sm font-medium text-gray-700">What percentage of your income do you want to allocate for Savings & Investments?</label>
-            <input type="float" name="budget_savings" id="budget_savings" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Enter your expected percentage for Savings & Investments">
+            {{ form.wants_percentage.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form.wants_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
         </div>
+        <div class="mb-4">
+            {{ form.savings_percentage.label(class="block text-sm font-medium text-gray-700") }}
+            {{ form.savings_percentage(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", oninput="updateInvestments()") }}
+        </div>
+        <div class="mb-4">
+            <label for="investments_percentage" class="block text-sm font-medium text-gray-700">Investments (Auto-Calculated)</label>
+            <input type="text" id="investments_percentage" class="mt-1 block w-full p-2 border border-gray-300 rounded-md bg-gray-100" readonly>
+        </div>
+
         <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Next</button>
     </form>
 
@@ -21,4 +32,19 @@
         <a href="{{ url_for('index') }}" class="text-blue-500">Skip Onboarding</a>
     </div>
 </div>
+
+<script>
+    function updateInvestments() {
+        const needs = parseFloat(document.getElementById('{{ form.needs_percentage.id }}').value) || 0;
+        const wants = parseFloat(document.getElementById('{{ form.wants_percentage.id }}').value) || 0;
+        const savings = parseFloat(document.getElementById('{{ form.savings_percentage.id }}').value) || 0;
+        const investments = 100 - needs - wants - savings;
+        
+        const investmentsField = document.getElementById("investments_percentage");
+
+        investmentsField.value = investments >= 0 ? investments.toFixed(2) : 0;
+    }
+
+    document.addEventListener("DOMContentLoaded", updateInvestments);
+</script>
 {% endblock %}
