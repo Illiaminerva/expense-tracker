@@ -270,9 +270,9 @@ def budget_settings():
     # Load current settings if they exist
     user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
     if user_settings and "budget_settings" in user_settings:
-        form.needs_percentage.data = round(user_settings["budget_settings"]["needs"], 2)
+        form.needs_percentage.data = round(user_settings["budget_settings"].get("needs", 0), 2)
         form.wants_percentage.data = round(user_settings["budget_settings"].get("wants", 0), 2)
-        form.savings_percentage.data = round(user_settings["budget_settings"]["savings"], 2)
+        form.savings_percentage.data = round(user_settings["budget_settings"].get("savings", 0), 2)
         form.investments_percentage.data = round(user_settings["budget_settings"].get("investments", 0), 2)
 
     return render_template("budget_settings.html", form=form)
