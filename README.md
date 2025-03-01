@@ -6,8 +6,9 @@ A Flask-based expense tracking application that helps users monitor their spendi
 
 - **User Authentication**: Secure registration and login system.
 - **Expense Management**: Add, edit, and delete expenses seamlessly.
-- **Customizable Budgeting**: Adjust the default 50/30/20 rule (Needs/Wants/Savings) to fit your preferences.
-- **Savings Goals**: Set savings goals and track your progress with visual indicators.
+- **Customizable Budgeting**: Manually split your income into Needs/Wants/Savings/Investments to fit your preferences.
+- **Savings Goals**: Set multiple savings goals and track your progress with visual indicators.
+- **Manual assignment of Savings/Investments**: Ability to manually dedicate your expenses to one of your savings goals.
 - **Visual Analytics**: 
   - Monthly spending trends.
   - Category distribution charts.
@@ -19,6 +20,7 @@ A Flask-based expense tracking application that helps users monitor their spendi
 ### Prerequisites
 
 - Python 3.11+
+- Docker
 - MongoDB
 - Git
 
@@ -29,38 +31,19 @@ A Flask-based expense tracking application that helps users monitor their spendi
 git clone https://github.com/Illiaminerva/expense-tracker.git
 cd expense-tracker
 ```
-
-2. Create and activate virtual environment:
-```bash
-python -m venv env
-source env/bin/activate  # On Windows: env\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Set up MongoDB:
+2. Set up MongoDB:
 - Install MongoDB if you haven't already
 - Create a new database
 - Note down your MongoDB URI
 
-5. Configure environment variables:
+3. Build and start the Docker containers:
 ```bash
-# Create .env file in project root and add:
-MONGO_URI=your_mongodb_uri
-SECRET_KEY=your_secret_key
+docker-compose up -d
 ```
 
-6. Run the application:
-```bash
-python run.py
-```
+4. Visit your localhost in the browser.
 
-7. Visit `http://127.0.0.1:5000` in your browser
-
-## Run Tests
+## Run Tests (OUTDATED, to be fixed soon)
 
 To ensure everything is working correctly, run the test suite:
 ```bash
@@ -71,35 +54,61 @@ This will execute all tests, including functionality for savings goals, expense 
 ## Usage
 
 1. **Register/Login**: Create an account or login to access your dashboard.
-2. **Add Expenses**: 
-   - Enter amount, description, and date.
-   - Select category (Needs/Wants/Savings).
-3. **View Analytics**:
+2. **Set Budget Allocations**:
+   - Allocate percentages to Needs, Wants, Savings, and Investments categories.
+   - The system automatically calculates the Investment percentage based on your other allocations.
+3. **Add Expenses**: 
+   - Enter the amount, description, and date.
+   - Select the appropriate category.
+   - Optionally link to a savings goal.
+4. **Create Savings Goals**:
+   - Set specific financial targets with deadlines.
+   - Track progress with visual charts.
+   - Link relevant expenses to goals. 
+5. **View Analytics**:
    - Check monthly spending trends.
    - Monitor category distribution.
    - Visualize budget adherence.
-   - Track budget adherence.
+   - Track progress toward savings goals.
 
 ## Project Structure
 ```
 expense-tracker/
 ├── app/
-│   ├── __init__.py      # App initialization
-│   ├── routes.py        # Route handlers
-│   ├── forms.py         # Form definitions
-│   ├── models.py        # Data models
-│   └── templates/       # HTML templates
-├── requirements.txt     # Project dependencies
-├── .env                 # Environment variables
-└── run.py              # Application entry point
+│   ├── __init__.py                  # App initialization and configuration
+│   ├── routes.py                    # Route handlers and business logic
+│   ├── forms.py                     # Form definitions and validation
+│   ├── models.py                    # Data models and database interactions
+│   ├── static/                      # CSS
+│   │   ├── styles.css               # Stylesheets
+│   └── templates/                   # HTML templates
+│       ├── base.html                # Base template with common elements
+│       ├── budget_settings.html     # Budget settings template
+│       ├── index.html               # Dashboard template
+│       ├── login.html               # Login template
+│       ├── onboarding.html          # Onboarding template
+│       ├── register.html            # Register template
+│       ├── set_savings_goal.html    # Savings goals templates
+│       └── summary.html             # Analytics and reports
+├── Dockerfile                       # Application container definition
+├── docker-compose.yml               # Container definition
+├── requirements.txt                 # Project dependencies
+├── .env.example                     # Example environment variables
+├── .gitignore                       # Git ignore rules
+└── run.py                           # Application entry point
 ```
 
 ## Technologies Used
 
-- **Backend**: Flask (Python)
-- **Database**: MongoDB
+- **Backend**:
+  - Flask (Python web framework)
+  - PyMongo (MongoDB integration)
+  - Flask-Login (Authentication)
+  - Flask-WTF (Form handling and validation)
+  - Python-dateutil (Date manipulation)
+- **Database**: MongoDB (will later be changed to Postgresql)
 - **Frontend**: 
   - HTML/CSS
   - JavaScript
   - Chart.js for visualizations
-- **Authentication**: Flask-Login
+  - Bootstrap
