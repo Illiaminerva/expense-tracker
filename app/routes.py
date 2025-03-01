@@ -116,9 +116,11 @@ def register():
         
         # Create new user
         hashed_password = generate_password_hash(form.password.data)
-        user_id = str(ObjectId())
+        # Create ObjectId first, then convert to string
+        obj_id = ObjectId()
+        user_id = str(obj_id)
         mongo.db.users.insert_one({
-            "_id": user_id,
+            "_id": obj_id,
             "email": form.email.data,
             "password": hashed_password,
             "onboarding_complete": False,
@@ -411,12 +413,11 @@ def set_savings_goal():
         if "savings_goal" in user_settings and not savings_goals:
             old_goal = user_settings.get("savings_goal")
             if old_goal:
-                # Convert old single goal to new format with an ID
-                old_goal["goal_id"] = str(ObjectId())
+                goal_obj_id = ObjectId()
+                old_goal["goal_id"] = str(goal_obj_id)
                 savings_goals = [old_goal]
-                # Update user with new format
                 mongo.db.users.update_one(
-                           {"_id": current_user.id},
+                    {"_id": ObjectId(current_user.get_id())},
                     {"$set": {"savings_goals": savings_goals}, "$unset": {"savings_goal": ""}}
                 )
 
