@@ -1,56 +1,235 @@
 {% extends "base.html" %} {% block content %}
-<h2 class="text-3xl font-bold mb-4">Expense Tracker</h2>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-900">Expense Tracker</h2>
+        <p class="mt-2 text-sm text-gray-600">Track and manage your expenses</p>
+    </div>
 
-<div class="bg-white p-6 rounded shadow-md mb-6">
-    <h3 class="text-xl font-semibold mb-4">Record New Expense</h3>
-    <form method="POST" action="{{ url_for('add_expense') }}">
-        {{ form.hidden_tag() }}
-        <div class="mb-4">
-            {{ form.description.label(class="block text-sm font-medium text-gray-700") }} {{ form.description(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", placeholder="e.g., Grocery Shopping") }}
+    <!-- Add Expense Form -->
+    <div class="mb-8 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Add New Expense</h3>
+        <form method="POST" action="{{ url_for('add_expense') }}">
+            {{ form.hidden_tag() }}
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                    {{ form.description(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500") }}
+                </div>
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                    {{ form.amount(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500") }}
+                </div>
+                <div class="mb-4">
+                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                    <select id="category" name="category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="Needs">Needs</option>
+                        <option value="Wants">Wants</option>
+                        <option value="Savings">Savings</option>
+                        <option value="Investments">Investments</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                    {{ form.date(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500") }}
+                </div>
+                
+                <!-- Goal Selection (only shown for Savings/Investments) -->
+                <div id="goalSelectionContainer" class="hidden sm:col-span-2">
+                    <label for="goal_id" class="block text-sm font-medium text-gray-700">Allocate to Goal (optional)</label>
+                    <select name="goal_id" id="goal_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">-- Not allocated to a specific goal --</option>
+                        {% for goal in goals %}
+                        <option value="{{ goal.goal_id }}">{{ goal.goal_name }} (Target: ${{ "%.2f"|format(goal.goal_amount) }})</option>
+                        {% endfor %}
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Select a goal to allocate this expense towards</p>
+                </div>
+            </div>
+            <div class="mt-6">
+                {{ form.submit(class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500") }}
+            </div>
+        </form>
+    </div>
+
+    <!-- Expenses List -->
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
+        <div class="flex justify-between items-center p-6 border-b border-gray-100">
+            <h3 class="text-lg font-semibold text-gray-900">Recent Expenses</h3>
+            <p class="text-sm font-medium text-gray-700">Total: ${{ "%.2f"|format(total_expenses) }}</p>
         </div>
-        <div class="mb-4">
-            {{ form.amount.label(class="block text-sm font-medium text-gray-700") }} {{ form.amount(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", placeholder="0.00") }}
+        
+        {% if expenses %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Goal</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for expense in expenses %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ expense.description }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ "%.2f"|format(expense.amount) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if expense.category == 'Needs' %}bg-blue-100 text-blue-800
+                                {% elif expense.category == 'Wants' %}bg-yellow-100 text-yellow-800
+                                {% elif expense.category == 'Savings' %}bg-green-100 text-green-800
+                                {% elif expense.category == 'Investments' %}bg-purple-100 text-purple-800
+                                {% endif %}">
+                                {{ expense.category }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ expense.date }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if expense.goal_id %}
+                                {% for goal in goals %}
+                                    {% if goal.goal_id == expense.goal_id %}
+                                        {{ goal.goal_name }}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="editExpense('{{ expense._id }}', '{{ expense.description }}', '{{ expense.amount }}', '{{ expense.category }}', '{{ expense.date }}', '{{ expense.goal_id|default('') }}')" class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
+                            <a href="{{ url_for('delete_expense', expense_id=expense._id) }}" onclick="return confirm('Are you sure you want to delete this expense?')" class="text-red-600 hover:text-red-900">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="mb-4">
-            {{ form.category.label(class="block text-sm font-medium text-gray-700") }} {{ form.category(class="mt-1 block w-full p-2 border border-gray-300 rounded-md") }}
+        {% else %}
+        <div class="p-6 text-center">
+            <p class="text-gray-500">No expenses recorded yet. Add your first expense above.</p>
         </div>
-        <div class="mb-4">
-            {{ form.date.label(class="block text-sm font-medium text-gray-700") }} {{ form.date(class="mt-1 block w-full p-2 border border-gray-300 rounded-md", type="date") }}
-        </div>
-        <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600">Record Expense</button>
-    </form>
+        {% endif %}
+    </div>
 </div>
 
-<div class="bg-white p-6 rounded shadow-md">
-    <h3 class="text-xl font-semibold mb-4">Expense Overview</h3>
-    <p class="text-lg mb-4">Total Spending: <span class="font-semibold">${{ "%.2f"|format(total_expenses) }}</span></p>
-
-    <ul class="space-y-4">
-        {% for expense in expenses %}
-        <li class="flex justify-between items-center bg-gray-50 p-4 rounded-md hover:bg-gray-100 transition-colors">
-            <form method="POST" action="{{ url_for('edit_expense', expense_id=expense['_id']) }}" class="flex space-x-3 w-full">
-                <input type="text" name="description" value="{{ expense['description'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" placeholder="Description" required>
-
-                <input type="number" name="amount" value="{{ expense['amount'] }}" step="0.01" class="flex-1 p-2 border border-gray-300 rounded-md" placeholder="Amount" required>
-
-                <select name="category" class="flex-1 p-2 border border-gray-300 rounded-md" required>
-                    <option value="needs" {% if expense['category'] == 'needs' %}selected{% endif %}>Essential Needs</option>
-                    <option value="wants" {% if expense['category'] == 'wants' %}selected{% endif %}>Lifestyle & Wants</option>
-                    <option value="savings" {% if expense['category'] == 'savings' %}selected{% endif %}>Savings</option>
-                    <option value="investments" {% if expense['category'] == 'investments' %}selected{% endif %}>Investments</option>
-                </select>
-
-                <input type="date" name="date" value="{{ expense['date'] }}" class="flex-1 p-2 border border-gray-300 rounded-md" required>
-
-                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition-colors">
-                    Update
+<!-- Edit Expense Modal -->
+<div id="editModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Edit Expense</h3>
+            <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <form id="editForm" method="POST">
+            <div class="space-y-4">
+                <div>
+                    <label for="edit_description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <input type="text" id="edit_description" name="description" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="edit_amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                    <input type="number" id="edit_amount" name="amount" step="0.01" min="0.01" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="edit_category" class="block text-sm font-medium text-gray-700">Category</label>
+                    <select id="edit_category" name="category" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="Needs">Needs</option>
+                        <option value="Wants">Wants</option>
+                        <option value="Savings">Savings</option>
+                        <option value="Investments">Investments</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="edit_date" class="block text-sm font-medium text-gray-700">Date</label>
+                    <input type="date" id="edit_date" name="date" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                
+                <!-- Goal Selection for Edit (only shown for Savings/Investments) -->
+                <div id="editGoalContainer" class="hidden">
+                    <label for="edit_goal_id" class="block text-sm font-medium text-gray-700">Allocate to Goal (optional)</label>
+                    <select name="goal_id" id="edit_goal_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">-- Not allocated to a specific goal --</option>
+                        {% for goal in goals %}
+                        <option value="{{ goal.goal_id }}">{{ goal.goal_name }} (Target: ${{ "%.2f"|format(goal.goal_amount) }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Save Changes
                 </button>
-            </form>
-            <a href="{{ url_for('delete_expense', expense_id=expense['_id']) }}" class="ml-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 transition-colors" onclick="return confirm('Are you sure you want to delete this expense?')">
-                Delete
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Show/hide goal selection based on category
+        const categorySelect = document.getElementById('expenseCategory');
+        const goalContainer = document.getElementById('goalSelectionContainer');
+        
+        categorySelect.addEventListener('change', function() {
+            if (this.value === 'Savings' || this.value === 'Investments') {
+                goalContainer.classList.remove('hidden');
+            } else {
+                goalContainer.classList.add('hidden');
+            }
+        });
+        
+        // Edit modal functionality
+        const editModal = document.getElementById('editModal');
+        const closeModal = document.getElementById('closeModal');
+        const editCategory = document.getElementById('edit_category');
+        const editGoalContainer = document.getElementById('editGoalContainer');
+        
+        closeModal.addEventListener('click', function() {
+            editModal.classList.add('hidden');
+        });
+        
+        editCategory.addEventListener('change', function() {
+            if (this.value === 'Savings' || this.value === 'Investments') {
+                editGoalContainer.classList.remove('hidden');
+            } else {
+                editGoalContainer.classList.add('hidden');
+                document.getElementById('edit_goal_id').value = '';
+            }
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === editModal) {
+                editModal.classList.add('hidden');
+            }
+        });
+    });
+    
+    // Function to populate the edit form
+    function editExpense(id, description, amount, category, date, goalId) {
+        document.getElementById('editForm').action = "/edit_expense/" + id;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('edit_amount').value = amount;
+        document.getElementById('edit_category').value = category;
+        document.getElementById('edit_date').value = date;
+        
+        // Handle goal selection
+        const editGoalContainer = document.getElementById('editGoalContainer');
+        if (category === 'Savings' || category === 'Investments') {
+            editGoalContainer.classList.remove('hidden');
+            document.getElementById('edit_goal_id').value = goalId;
+        } else {
+            editGoalContainer.classList.add('hidden');
+        }
+        
+        document.getElementById('editModal').classList.remove('hidden');
+    }
+</script>
 {% endblock %}

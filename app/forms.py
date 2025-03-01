@@ -1,47 +1,47 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, FloatField, SelectField, DateField
-from wtforms.validators import DataRequired, Email, EqualTo
+from wtforms import StringField, PasswordField, SubmitField, FloatField, SelectField, DateField, DecimalField
+from wtforms.validators import DataRequired, Email, EqualTo, Length, NumberRange
+from datetime import date
 
 
 class LoginForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    password = PasswordField("Password", validators=[DataRequired()])
-    submit = SubmitField("Login")
+    """Form for user login."""
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
 
 class RegistrationForm(FlaskForm):
-    email = StringField("Email", validators=[DataRequired(), Email()])
-    password = PasswordField("Password", validators=[DataRequired()])
-    confirm_password = PasswordField(
-        "Confirm Password", validators=[DataRequired(), EqualTo("password")]
-    )
-    submit = SubmitField("Register")
-
-
-# class CategoryForm(FlaskForm):
-#     name = StringField("Category Name", validators=[DataRequired()])
-#     submit = SubmitField("Add Category")
+    """Form for user registration."""
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
+    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('Register')
 
 
 class ExpenseForm(FlaskForm):
+    """Form for adding and editing expenses."""
     description = StringField("Description", validators=[DataRequired()])
-    amount = FloatField("Amount ($)", validators=[DataRequired()])
+    amount = DecimalField("Amount", validators=[DataRequired(), NumberRange(min=0.01)])
     category = SelectField(
         "Category",
         choices=[
-            ("needs", "Essential Needs"),
-            ("wants", "Lifestyle & Wants"),
-            ("savings", "Savings & Investments"),
-            ("investments", "Investments"),  
+            ("Needs", "Needs"),
+            ("Wants", "Wants"),
+            ("Savings", "Savings"),
+            ("Investments", "Investments")
         ],
+        validators=[DataRequired()],
     )
-    date = DateField("Transaction Date", format="%Y-%m-%d", validators=[DataRequired()])
-    submit = SubmitField("Record Expense")
+    date = DateField("Date", validators=[DataRequired()])
+    # Note: goal_id will be added dynamically in the template
+    submit = SubmitField('Add Expense')
 
 
 class BudgetSettingsForm(FlaskForm):
-    needs_percentage = FloatField("Essential Needs (%)", default=50.0, validators=[DataRequired()])
-    wants_percentage = FloatField("Wants (%)", default=20.0, validators=[DataRequired()])
-    savings_percentage = FloatField("Savings (%)", default=20.0, validators=[DataRequired()])
-    investments_percentage = FloatField("Investments (%)", default=10.0, validators=[DataRequired()])
-    submit = SubmitField("Save Settings")
+    """Form for setting budget percentages."""
+    needs_percentage = FloatField('Needs (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    wants_percentage = FloatField('Wants (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    savings_percentage = FloatField('Savings (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    investments_percentage = FloatField('Investments (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    submit = SubmitField('Save Settings')

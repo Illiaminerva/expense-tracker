@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import app, mongo, login_manager
@@ -8,6 +8,37 @@ from bson.objectid import ObjectId
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
+import random
+
+
+# List of financial facts to display to users
+FINANCIAL_FACTS = [
+    "Setting specific savings goals increases your chance of saving successfully by 42%.",
+    "People who track their expenses regularly save up to 20% more money than those who don't.",
+    "Automating your savings can increase your annual savings rate by up to 56%.",
+    "Following the 50/30/20 budget rule (needs/wants/savings) can help you build emergency savings 3x faster.",
+    "Individuals with written financial goals are 33% more likely to achieve them.",
+    "Reducing impulse purchases can save the average person over $5,000 per year.",
+    "People who check their financial progress weekly are 30% more likely to reach their financial goals.",
+    "Having an emergency fund reduces financial stress by up to 60%.",
+    "Saving just 1% more of your income can add over $50,000 to your retirement over 30 years.",
+    "Paying yourself first (saving before spending) can increase your savings rate by 25%.",
+    "People who categorize their expenses save on average 15% more than those who don't.",
+    "Setting up automatic transfers to savings accounts increases the likelihood of maintaining a savings habit by 70%.",
+    "Individuals who review their budget monthly are 80% more likely to stay on track with financial goals.",
+    "Visualizing your savings goals makes you 58% more likely to achieve them.",
+    "People who share their financial goals with others have a 65% higher success rate.",
+    "Using cash instead of credit cards for discretionary spending can reduce your expenses by up to 23%.",
+    "Saving 15% of your income throughout your career could allow you to maintain your lifestyle in retirement.",
+    "Tracking your net worth regularly increases your wealth accumulation by an average of 15% over 10 years.",
+    "People who invest regularly outperform those who try to time the market by an average of 3% annually.",
+    "Having multiple savings goals (short, medium, and long-term) increases overall financial success by 40%."
+]
+
+
+def get_random_fact():
+    """Return a random financial fact from the list."""
+    return random.choice(FINANCIAL_FACTS)
 
 
 @login_manager.user_loader
@@ -24,8 +55,21 @@ def index():
     expenses = list(mongo.db.expenses.find({"user_id": current_user.get_id()}))
     categories = mongo.db.expenses.distinct("category")
     total_expenses = sum(expense["amount"] for expense in expenses)
+    
+    # Get user's savings goals for the dropdown
+    user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+    
+    # Initialize goals as an empty list if user_settings is None
+    goals = []
+    if user_settings:
+        goals = user_settings.get("savings_goals", [])
+    
     # Create an instance of the ExpenseForm for adding new expenses
     form = ExpenseForm()
+    
+    # Get a random financial fact
+    financial_fact = get_random_fact()
+    
     # Render the index template with the expenses, total, and categories
     return render_template(
         "index.html",
@@ -33,6 +77,8 @@ def index():
         expenses=expenses,
         total_expenses=total_expenses,
         categories=categories,
+        goals=goals,
+        financial_fact=financial_fact
     )
 
 
@@ -56,27 +102,36 @@ def login():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Handle user registration and render the registration page."""
+    """Register a new user."""
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    
     form = RegistrationForm()
     if form.validate_on_submit():
-        # Check if the email is already registered
+        # Check if user already exists
         existing_user = mongo.db.users.find_one({"email": form.email.data})
-        if existing_user is None:
-            # Hash the password and store the new user in the database
-            hash_pass = generate_password_hash(form.password.data)
-            user_id = mongo.db.users.insert_one({"email": form.email.data, "password": hash_pass}).inserted_id
-            
-            # Log the user in
-            user_obj = User(str(user_id))
-            login_user(user_obj)
-
-            flash("Registration successful! Please complete your onboarding.", "success")
-            return redirect(url_for("onboarding_step1"))  # Redirect to the onboarding page
-        else:
-            flash("Email already registered", "error")  # Flash an error if the email exists
-    else:
-        flash("Please correct the highlighted fields.", "error")  # Flash an error for form validation issues
-    # Render the registration template with the form
+        if existing_user:
+            flash("Email already registered. Please login.", "danger")
+            return redirect(url_for("login"))
+        
+        # Create new user
+        hashed_password = generate_password_hash(form.password.data)
+        user_id = str(ObjectId())
+        mongo.db.users.insert_one({
+            "_id": user_id,
+            "email": form.email.data,
+            "password": hashed_password,
+            "onboarding_complete": False,
+            "created_at": datetime.now()
+        })
+        
+        # Log in the new user
+        user = User(user_id)
+        login_user(user)
+        
+        flash("Account created successfully! Let's set up your profile.", "success")
+        return redirect(url_for("onboarding"))
+    
     return render_template("register.html", form=form)
 
 
@@ -94,17 +149,37 @@ def add_expense():
     """Add a new expense to the database."""
     form = ExpenseForm()
     if form.validate_on_submit():
+        # Get the goal_id if provided
+        goal_id = request.form.get("goal_id", "")
+        
+        # Prepare expense data
+        expense_data = {
+            "user_id": current_user.get_id(),
+            "description": form.description.data,
+            "amount": float(form.amount.data),
+            "category": form.category.data,
+            "date": str(form.date.data),
+        }
+        
+        # Add goal_id if provided and category is Savings or Investments
+        if goal_id and form.category.data in ["Savings", "Investments"]:
+            expense_data["goal_id"] = goal_id
+        
         # Insert the new expense into the database
-        mongo.db.expenses.insert_one(
-            {
-                "user_id": current_user.get_id(),
-                "description": form.description.data,
-                "amount": float(form.amount.data),
-                "category": form.category.data,
-                "date": str(form.date.data),
-            }
-        )
-        flash("Expense added successfully!")  # Flash a success message
+        mongo.db.expenses.insert_one(expense_data)
+        
+        # Check if this is from onboarding
+        from_onboarding = request.form.get("from_onboarding") == "true"
+        
+        # Check if this is an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": True, "message": "Expense added successfully!"})
+        
+        if from_onboarding:
+            return redirect(url_for("onboarding", step=3))
+        else:
+            flash("Expense added successfully!")
+    
     return redirect(url_for("index"))  # Redirect to the index page
 
 
@@ -115,6 +190,9 @@ def edit_expense(expense_id):
     form = ExpenseForm()
     valid_categories = [choice[0] for choice in form.category.choices]
 
+    # Get the goal_id if provided
+    goal_id = request.form.get("goal_id", "")
+    
     # Prepare the updated expense data
     updated_expense = {
         "description": request.form["description"],
@@ -122,6 +200,17 @@ def edit_expense(expense_id):
         "category": request.form["category"],
         "date": request.form["date"],
     }
+    
+    # Add goal_id if provided and category is Savings or Investments
+    if goal_id and request.form["category"] in ["Savings", "Investments"]:
+        updated_expense["goal_id"] = goal_id
+    elif "goal_id" in request.form and not goal_id:
+        # If goal_id field exists but is empty, remove the goal_id
+        mongo.db.expenses.update_one(
+            {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
+            {"$unset": {"goal_id": ""}}
+        )
+    
     # Update the expense in the database
     mongo.db.expenses.update_one(
         {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
@@ -153,7 +242,12 @@ def summary():
     
     # Fetch user-defined budget settings
     user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
-    budget_settings = user_settings.get("budget_settings", {"needs": 50, "wants": 30, "savings": 20})
+    
+    # Handle case when user_settings is None
+    if user_settings is None:
+        budget_settings = {"needs": 50, "wants": 20, "savings": 20, "investments": 10}
+    else:
+        budget_settings = user_settings.get("budget_settings", {"needs": 50, "wants": 20, "savings": 20, "investments": 10})
 
     # Define the date range for the summary (last 12 months)
     end_date = datetime.now()
@@ -225,6 +319,9 @@ def summary():
         category_data["dates"].extend([expense['date'] for expense in expense_list])
         category_data["monthly_data"][category] = dict(monthly_totals)
 
+    # Get a random financial fact
+    financial_fact = get_random_fact()
+    
     # Render the summary template with the calculated data
     return render_template(
         "summary.html",
@@ -232,13 +329,15 @@ def summary():
         monthly_average=monthly_average,
         time_data=time_data,
         category_data=category_data,
-        budget_settings=budget_settings
+        budget_settings=budget_settings,
+        financial_fact=financial_fact
     )
 
 
 @app.route("/budget_settings", methods=["GET", "POST"])
 @login_required
 def budget_settings():
+    """Handle budget allocation settings and display the budget settings form."""
     form = BudgetSettingsForm()
     if form.validate_on_submit():
         budget_needs = round(form.needs_percentage.data, 2)
@@ -262,89 +361,187 @@ def budget_settings():
                     "investments": budget_investments,
                     "wants": budget_wants
                 }
-            }}
+            }},
+            upsert=True  # Create the document if it doesn't exist
         )
         flash("Budget settings updated successfully!", "success")
         return redirect(url_for("index"))
 
     # Load current settings if they exist
     user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
-    if user_settings and "budget_settings" in user_settings:
+    
+    # Set default values if user_settings is None or budget_settings is not present
+    if user_settings is None or "budget_settings" not in user_settings:
+        form.needs_percentage.data = 50
+        form.wants_percentage.data = 30
+        form.savings_percentage.data = 10
+        form.investments_percentage.data = 10
+    else:
         form.needs_percentage.data = round(user_settings["budget_settings"].get("needs", 0), 2)
         form.wants_percentage.data = round(user_settings["budget_settings"].get("wants", 0), 2)
         form.savings_percentage.data = round(user_settings["budget_settings"].get("savings", 0), 2)
         form.investments_percentage.data = round(user_settings["budget_settings"].get("investments", 0), 2)
 
-    return render_template("budget_settings.html", form=form)
+    # Get a random financial fact
+    financial_fact = get_random_fact()
+    
+    return render_template("budget_settings.html", form=form, financial_fact=financial_fact)
 
 
 @app.route("/set_savings_goal", methods=["GET", "POST"])
 @login_required
 def set_savings_goal():
-    """Render the savings goal form and handle submissions."""
+    """Render the savings goals page and handle submissions."""
     user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
 
-    # Retrieve savings goal
-    savings_goal = user_settings.get("savings_goal", {"goal_amount": 0, "start_date": "", "end_date": ""})
-
-    # Initialize total savings and savings data
-    total_savings = 0
-    savings_data = {
-        "dates": [],
-        "cumulative_amounts": []
-    }
-
-    if request.method == "POST":
-        # Handle setting a new savings goal
-        goal_name = request.form.get("goal_name", "")
-        goal_amount = float(request.form.get("goal_amount", 0))
-        start_date = request.form.get("start_date", "")
-        end_date = request.form.get("end_date", "")
-
-        # Update the savings goal in the database
-        mongo.db.users.update_one(
-            {"_id": ObjectId(current_user.get_id())},
-            {"$set": {
-                "savings_goal": {
-                    "goal_name": goal_name,
-                    "goal_amount": goal_amount,
-                    "start_date": start_date,
-                    "end_date": end_date
-                }
-            }}
-        )
-        flash("Savings goal set successfully!", "success")
-        return redirect(url_for("set_savings_goal"))
-
-    # Calculate total savings from expenses in the "savings" category within the date range
-    expenses = list(mongo.db.expenses.find({"user_id": str(current_user.get_id()), "category": "savings"}))
-
-    # Filter expenses within the savings goal date range and sort by date
-    if savings_goal['start_date'] and savings_goal['end_date']:
-        start_date_obj = datetime.strptime(savings_goal['start_date'], '%Y-%m-%d')
-        end_date_obj = datetime.strptime(savings_goal['end_date'], '%Y-%m-%d')
-        filtered_expenses = [expense for expense in expenses if start_date_obj <= datetime.strptime(expense['date'], '%Y-%m-%d') <= end_date_obj]
+    # Initialize savings_goals as an empty list if user_settings is None
+    if user_settings is None:
+        savings_goals = []
+        # Create a default user settings document
+        mongo.db.users.insert_one({
+            "_id": ObjectId(current_user.get_id()),
+            "savings_goals": [],
+            "created_at": datetime.now()
+        })
     else:
-        filtered_expenses = expenses
+        # Retrieve savings goals (use an array instead of a single goal)
+        savings_goals = user_settings.get("savings_goals", [])
+        
+        # If old format with single goal, convert to new format
+        if "savings_goal" in user_settings and not savings_goals:
+            old_goal = user_settings.get("savings_goal")
+            if old_goal:
+                # Convert old single goal to new format with an ID
+                old_goal["goal_id"] = str(ObjectId())
+                savings_goals = [old_goal]
+                # Update user with new format
+                mongo.db.users.update_one(
+                           {"_id": current_user.id},
+                    {"$set": {"savings_goals": savings_goals}, "$unset": {"savings_goal": ""}}
+                )
 
-    # Sort expenses by date
-    filtered_expenses.sort(key=lambda x: x['date'])
+    # Initialize goals data for the template
+    goals_data = []
+    
+    # Process form submission for adding/editing a goal
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        
+        if action == "add_goal" or action == "edit_goal":
+            goal_id = request.form.get("goal_id", "")
+            goal_name = request.form.get("goal_name", "")
+            goal_amount = float(request.form.get("goal_amount", 0))
+            start_date = request.form.get("start_date", "")
+            end_date = request.form.get("end_date", "")
+            
+            # Create new goal object
+            new_goal = {
+                "goal_id": goal_id if goal_id else str(ObjectId()),
+                "goal_name": goal_name,
+                "goal_amount": goal_amount,
+                "start_date": start_date,
+                "end_date": end_date,
+                "created_at": datetime.now().strftime('%Y-%m-%d')
+            }
+            
+            # If editing, remove old goal first
+            if action == "edit_goal" and goal_id:
+                savings_goals = [goal for goal in savings_goals if goal.get("goal_id") != goal_id]
+            
+            # Add the new/updated goal
+            savings_goals.append(new_goal)
+            
+            # Update the savings goals in the database
+            mongo.db.users.update_one(
+                {"_id": ObjectId(current_user.get_id())},
+                {"$set": {"savings_goals": savings_goals}}
+            )
+            
+            flash("Savings goal saved successfully!", "success")
+            return redirect(url_for("set_savings_goal"))
+            
+        elif action == "delete_goal":
+            goal_id = request.form.get("goal_id", "")
+            if goal_id:
+                # Remove the goal with the specified ID
+                savings_goals = [goal for goal in savings_goals if goal.get("goal_id") != goal_id]
+                
+                # Update the database
+                mongo.db.users.update_one(
+                    {"_id": ObjectId(current_user.get_id())},
+                    {"$set": {"savings_goals": savings_goals}}
+                )
+                
+                flash("Goal deleted successfully!", "success")
+                return redirect(url_for("set_savings_goal"))
 
-    # Prepare savings data for the chart
-    cumulative_amount = 0
-    for expense in filtered_expenses:
-        expense_date = expense['date']
-        amount = expense['amount']
-        cumulative_amount += amount
-        savings_data['dates'].append(expense_date)
-        savings_data['cumulative_amounts'].append(cumulative_amount)
+    # Process each goal to calculate progress
+    for goal in savings_goals:
+        goal_id = goal.get("goal_id", "")
+        goal_amount = goal.get("goal_amount", 0)
+        start_date = goal.get("start_date", "")
+        end_date = goal.get("end_date", "")
+        
+        # Calculate total savings for this goal from expenses
+        total_savings = 0
+        savings_data = {
+            "dates": [],
+            "cumulative_amounts": []
+        }
+        
+        # Get all expenses allocated to this goal
+        goal_expenses = list(mongo.db.expenses.find({
+            "user_id": str(current_user.get_id()), 
+            "category": {"$in": ["Savings", "Investments"]},
+            "goal_id": goal_id
+        }))
+        
+        # Also include expenses without a goal_id for backward compatibility
+        if not goal_expenses and len(savings_goals) == 1:
+            goal_expenses = list(mongo.db.expenses.find({
+                "user_id": str(current_user.get_id()), 
+                "category": {"$in": ["Savings", "Investments"]},
+                "goal_id": {"$exists": False}
+            }))
+        
+        # Filter expenses within the goal date range and sort by date
+        if start_date and end_date:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            filtered_expenses = [expense for expense in goal_expenses if 
+                                start_date_obj <= datetime.strptime(expense['date'], '%Y-%m-%d') <= end_date_obj]
+        else:
+            filtered_expenses = goal_expenses
 
-    total_savings = cumulative_amount
+        # Sort expenses by date
+        filtered_expenses.sort(key=lambda x: x['date'])
 
-    # Calculate progress towards the savings goal
-    progress = (total_savings / savings_goal['goal_amount'] * 100) if savings_goal['goal_amount'] > 0 else 0
+        # Prepare savings data for the chart
+        cumulative_amount = 0
+        for expense in filtered_expenses:
+            expense_date = expense['date']
+            amount = expense['amount']
+            cumulative_amount += amount
+            savings_data['dates'].append(expense_date)
+            savings_data['cumulative_amounts'].append(cumulative_amount)
 
-    return render_template("set_savings_goal.html", savings_goal=savings_goal, progress=progress, savings_data=savings_data, total_savings=total_savings)
+        total_savings = cumulative_amount
+
+        # Calculate progress towards the savings goal
+        progress = (total_savings / goal_amount * 100) if goal_amount > 0 else 0
+        
+        # Add goal data for the template
+        goals_data.append({
+            "goal": goal,
+            "progress": progress,
+            "savings_data": savings_data,
+            "total_savings": total_savings
+        })
+
+    # Get a random financial fact
+    financial_fact = get_random_fact()
+    
+    return render_template("set_savings_goal.html", goals_data=goals_data, financial_fact=financial_fact)
 
 
 @app.route("/onboarding/step1", methods=["GET", "POST"])
@@ -353,33 +550,39 @@ def onboarding_step1():
     """Handle budget settings during onboarding."""
     form = BudgetSettingsForm()
 
-    if form.validate_on_submit():
-        # Round input values to avoid floating-point errors
-        budget_needs = round(form.needs_percentage.data, 2)
-        budget_wants = round(form.wants_percentage.data, 2)
-        budget_savings = round(form.savings_percentage.data, 2)
-
+    if request.method == "POST":
+        # Get values directly from form data
+        needs_percentage = float(request.form.get("needs_percentage", 0))
+        wants_percentage = float(request.form.get("wants_percentage", 0))
+        savings_percentage = float(request.form.get("savings_percentage", 0))
+        
         # Calculate investments automatically
-        budget_investments = round(100 - (budget_needs + budget_wants + budget_savings), 2)
-
+        investments_percentage = 100 - needs_percentage - wants_percentage - savings_percentage
+        
         # Ensure total does not exceed 100%
-        if budget_investments < 0:
+        if investments_percentage < 0:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"success": False, "message": "The total percentages cannot exceed 100%. Please adjust your inputs."})
             flash("The total percentages cannot exceed 100%. Please adjust your inputs.", "error")
-            return redirect(url_for("onboarding_step1"))
-
+            return redirect(url_for("onboarding"))
+        
         # Save budget settings to the user's database entry
         mongo.db.users.update_one(
             {"_id": ObjectId(current_user.get_id())},
             {"$set": {
                 "budget_settings": {
-                    "needs": budget_needs,
-                    "wants": budget_wants,
-                    "savings": budget_savings,
-                    "investments": budget_investments
+                    "needs": needs_percentage,
+                    "wants": wants_percentage,
+                    "savings": savings_percentage,
+                    "investments": investments_percentage
                 }
             }}
         )
-
+        
+        # Check if this is an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": True, "message": "Budget settings saved successfully!"})
+        
         flash("Budget settings saved successfully!", "success")
         return redirect(url_for("onboarding_step2"))
 
@@ -390,19 +593,38 @@ def onboarding_step1():
 def onboarding_step2():
     form = ExpenseForm()
     if request.method == "POST":
-        if form.validate_on_submit():  # Validate form submission
-            first_expense = {
-            "description": form.description.data,
-            "amount": float(form.amount.data),
-            "category": form.category.data,
+        # Get values directly from form data
+        description = request.form.get("description", "")
+        amount = float(request.form.get("amount", 0))
+        category = request.form.get("category", "")
+        date_str = request.form.get("date", "")
+        
+        # Validate required fields
+        if not description or amount <= 0 or not category or not date_str:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({"success": False, "message": "Please fill in all required fields."})
+            flash("Please fill in all required fields.", "error")
+            return redirect(url_for("onboarding"))
+        
+        # Create expense object
+        first_expense = {
+            "description": description,
+            "amount": amount,
+            "category": category,
             "user_id": current_user.get_id(),
-            "date": form.date.data.strftime('%Y-%m-%d') 
+            "date": date_str
         }
-
+        
+        # Save to database
         mongo.db.expenses.insert_one(first_expense)
+        
+        # Check if this is an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": True, "message": "Expense added successfully!"})
+        
         return redirect(url_for("onboarding_step3"))
 
-    return render_template("onboarding_step2.html", form=form)  # Render step 2 template
+    return render_template("onboarding_step2.html", form=form)
 
 
 @app.route("/onboarding/step3", methods=["GET", "POST"])
@@ -414,21 +636,109 @@ def onboarding_step3():
         goal_amount = float(request.form.get("goal_amount", 0))
         start_date = request.form.get("start_date", "")
         end_date = request.form.get("end_date", "")
+        
+        # Create a new goal with a unique ID
+        new_goal = {
+            "goal_id": str(ObjectId()),
+            "goal_name": goal_name,
+            "goal_amount": goal_amount,
+            "start_date": start_date,
+            "end_date": end_date,
+            "created_at": datetime.now().strftime('%Y-%m-%d')
+        }
+        
+        # Check if user document exists
+        user_exists = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+        
+        if user_exists:
+            # Update the savings goals in the database
+            mongo.db.users.update_one(
+                {"_id": ObjectId(current_user.get_id())},
+                {"$push": {"savings_goals": new_goal}}
+            )
+        else:
+            # Create a new user document with the savings goal
+            mongo.db.users.insert_one({
+                "_id": ObjectId(current_user.get_id()),
+                "savings_goals": [new_goal],
+                "onboarding_complete": True,
+                "created_at": datetime.now()
+            })
 
-        # Update the savings goal in the database
+        # Mark onboarding as complete
         mongo.db.users.update_one(
             {"_id": ObjectId(current_user.get_id())},
-            {"$set": {
-                "savings_goal": {
-                    "goal_name": goal_name,
-                    "goal_amount": goal_amount,
-                    "start_date": start_date,
-                    "end_date": end_date
-                }
-            }}
+            {"$set": {"onboarding_complete": True}}
         )
 
         flash("Onboarding completed successfully!", "success")
         return redirect(url_for("index"))  # Redirect to the main dashboard
 
     return render_template("onboarding_step3.html")  # Render step 3 template
+
+@app.route("/onboarding", methods=["GET"])
+@login_required
+def onboarding():
+    """Main onboarding page with multi-step process."""
+    # Create budget form with default values
+    form = BudgetSettingsForm()
+    form.needs_percentage.data = 50
+    form.wants_percentage.data = 30
+    form.savings_percentage.data = 10
+    form.investments_percentage.data = 10
+    
+    # Get a random financial fact
+    financial_fact = get_random_fact()
+    
+    return render_template("onboarding.html", form=form, financial_fact=financial_fact)
+
+@app.route("/set_budget", methods=["POST"])
+@login_required
+def set_budget():
+    """Handle budget settings submission."""
+    if request.method == "POST":
+        total_budget = float(request.form.get("total_budget", 0))
+        
+        # Get category percentages
+        budget_settings = {}
+        for category in ["Housing", "Food", "Transportation", "Utilities", "Healthcare", 
+                         "Personal", "Entertainment", "Savings", "Investments"]:
+            if category in request.form:
+                budget_settings[category] = float(request.form.get(category, 0))
+        
+        # Save budget settings to the user's database entry
+        mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": {
+                "total_budget": total_budget,
+                "budget_categories": budget_settings
+            }}
+        )
+        
+        # Check if this is from onboarding
+        from_onboarding = request.form.get("from_onboarding") == "true"
+        
+        # Check if this is an AJAX request
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": True, "message": "Budget settings saved successfully!"})
+        
+        if from_onboarding:
+            return redirect(url_for("onboarding", step=2))
+        else:
+            flash("Budget settings saved successfully!", "success")
+            return redirect(url_for("index"))
+    
+    return redirect(url_for("index"))
+
+@app.route("/restart_onboarding")
+@login_required
+def restart_onboarding():
+    """Restart the onboarding process."""
+    # Reset onboarding status
+    mongo.db.users.update_one(
+        {"_id": ObjectId(current_user.get_id())},
+        {"$set": {"onboarding_complete": False}}
+    )
+    
+    flash("Onboarding process restarted. Let's set up your profile again.", "info")
+    return redirect(url_for("onboarding"))

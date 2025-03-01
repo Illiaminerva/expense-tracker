@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="mb-8 text-center">
+        <h2 class="text-3xl font-bold text-gray-900">Welcome to Your Expense Tracker</h2>
+        <p class="mt-2 text-sm text-gray-600">Let's set up your account in a few simple steps</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div class="flex flex-col items-center">
+                <div id="step1-indicator" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center">1</div>
+                <span class="mt-2 text-xs font-medium">Budget</span>
+            </div>
+            <div class="flex-1 h-1 bg-gray-200 mx-2">
+                <div id="progress-1-2" class="h-full bg-blue-600" style="width: 0%"></div>
+            </div>
+            <div class="flex flex-col items-center">
+                <div id="step2-indicator" class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">2</div>
+                <span class="mt-2 text-xs font-medium">Expense</span>
+            </div>
+            <div class="flex-1 h-1 bg-gray-200 mx-2">
+                <div id="progress-2-3" class="h-full bg-blue-600" style="width: 0%"></div>
+            </div>
+            <div class="flex flex-col items-center">
+                <div id="step3-indicator" class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center">3</div>
+                <span class="mt-2 text-xs font-medium">Savings</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 1: Budget Allocation -->
+    <div id="step1" class="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Step 1: Set Your Budget Allocation</h3>
+        <p class="text-sm text-gray-600 mb-6">Distribute your monthly budget across different categories</p>
+        
+        <form id="budgetForm" method="POST" action="{{ url_for('onboarding_step1') }}">
+            {{ form.hidden_tag() if form }}
+            <input type="hidden" name="from_onboarding" value="true">
+            
+            <div class="mb-4">
+                <label for="needs_percentage" class="block text-sm font-medium text-gray-700">Needs Percentage (%)</label>
+                <input type="number" id="needs_percentage" name="needs_percentage" min="0" max="100" step="0.1" value="50"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    oninput="updateInvestments()">
+            </div>
+            
+            <div class="mb-4">
+                <label for="wants_percentage" class="block text-sm font-medium text-gray-700">Wants Percentage (%)</label>
+                <input type="number" id="wants_percentage" name="wants_percentage" min="0" max="100" step="0.1" value="30"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    oninput="updateInvestments()">
+            </div>
+            
+            <div class="mb-4">
+                <label for="savings_percentage" class="block text-sm font-medium text-gray-700">Savings Percentage (%)</label>
+                <input type="number" id="savings_percentage" name="savings_percentage" min="0" max="100" step="0.1" value="10"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    oninput="updateInvestments()">
+            </div>
+            
+            <div class="mb-4">
+                <label for="investments_percentage" class="block text-sm font-medium text-gray-700">Investments (Auto-Calculated)</label>
+                <input type="text" id="investments_percentage" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+                <button type="button" id="nextToStep2" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Next: Add Expense
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Step 2: Add First Expense -->
+    <div id="step2" class="hidden bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Step 2: Add Your First Expense</h3>
+        <p class="text-sm text-gray-600 mb-6">Record an expense to get started with tracking</p>
+        
+        <form id="expenseForm" method="POST" action="{{ url_for('onboarding_step2') }}">
+            <input type="hidden" name="from_onboarding" value="true">
+            
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Expense Description</label>
+                    <input type="text" id="description" name="description" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
+                    <input type="number" id="amount" name="amount" min="0.01" step="0.01" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                    <select id="category" name="category" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="Needs">Needs</option>
+                        <option value="Wants">Wants</option>
+                        <option value="Savings">Savings</option>
+                        <option value="Investments">Investments</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="date" class="block text-sm font-medium text-gray-700">Date</label>
+                    <input type="date" id="date" name="date" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-between">
+                <button type="button" id="backToStep1" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Back
+                </button>
+                <button type="button" id="nextToStep3" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Next: Savings Goal
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Step 3: Set Savings Goal -->
+    <div id="step3" class="hidden bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Step 3: Set Your First Savings Goal</h3>
+        <p class="text-sm text-gray-600 mb-6">Define a financial goal to work towards</p>
+        
+        <form id="savingsForm" method="POST" action="{{ url_for('onboarding_step3') }}">
+            <input type="hidden" name="from_onboarding" value="true">
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                    <label for="goal_name" class="block text-sm font-medium text-gray-700">Goal Name</label>
+                    <input type="text" id="goal_name" name="goal_name" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="goal_amount" class="block text-sm font-medium text-gray-700">Target Amount ($)</label>
+                    <input type="number" id="goal_amount" name="goal_amount" min="1" step="0.01" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="end_date" class="block text-sm font-medium text-gray-700">Target Date</label>
+                    <input type="date" id="end_date" name="end_date" required
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex justify-between">
+                <button type="button" id="backToStep2" class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Back
+                </button>
+                <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Complete Setup
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form elements
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        
+        const step1Indicator = document.getElementById('step1-indicator');
+        const step2Indicator = document.getElementById('step2-indicator');
+        const step3Indicator = document.getElementById('step3-indicator');
+        
+        const progress12 = document.getElementById('progress-1-2');
+        const progress23 = document.getElementById('progress-2-3');
+        
+        const budgetForm = document.getElementById('budgetForm');
+        const expenseForm = document.getElementById('expenseForm');
+        const savingsForm = document.getElementById('savingsForm');
+        
+        const nextToStep2 = document.getElementById('nextToStep2');
+        const backToStep1 = document.getElementById('backToStep1');
+        const nextToStep3 = document.getElementById('nextToStep3');
+        const backToStep2 = document.getElementById('backToStep2');
+        
+        // Always start at step 1 when the page loads
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
+        step3.classList.add('hidden');
+        
+        step1Indicator.classList.add('bg-blue-600', 'text-white');
+        step1Indicator.classList.remove('bg-gray-200', 'text-gray-600', 'bg-green-500');
+        
+        step2Indicator.classList.add('bg-gray-200', 'text-gray-600');
+        step2Indicator.classList.remove('bg-blue-600', 'text-white', 'bg-green-500');
+        
+        step3Indicator.classList.add('bg-gray-200', 'text-gray-600');
+        step3Indicator.classList.remove('bg-blue-600', 'text-white', 'bg-green-500');
+        
+        progress12.style.width = '0%';
+        progress23.style.width = '0%';
+        
+        // Set today's date as default for expense and savings goal
+        const today = new Date().toISOString().split('T')[0];
+        if (document.getElementById('date')) {
+            document.getElementById('date').value = today;
+        }
+        if (document.getElementById('start_date')) {
+            document.getElementById('start_date').value = today;
+        }
+        
+        // Set default end date for savings goal (3 months from now)
+        if (document.getElementById('end_date')) {
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + 3);
+            document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
+        }
+        
+        // Function to update investments percentage
+        function updateInvestments() {
+            const needs = parseFloat(document.getElementById('needs_percentage').value) || 0;
+            const wants = parseFloat(document.getElementById('wants_percentage').value) || 0;
+            const savings = parseFloat(document.getElementById('savings_percentage').value) || 0;
+            const investments = 100 - needs - wants - savings;
+            
+            const investmentsField = document.getElementById("investments_percentage");
+            investmentsField.value = investments >= 0 ? investments.toFixed(2) + "%" : "0%";
+            
+            // Highlight in red if total exceeds 100%
+            investmentsField.classList.toggle('text-red-500', investments < 0);
+            return investments >= 0;
+        }
+        
+        // Initialize investments calculation
+        if (document.getElementById('needs_percentage')) {
+            updateInvestments();
+        }
+        
+        // Navigation between steps
+        nextToStep2.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Validate budget form
+            if (!budgetForm.checkValidity()) {
+                budgetForm.reportValidity();
+                return;
+            }
+            
+            // Check if percentages are valid
+            if (!updateInvestments()) {
+                alert('Total percentage exceeds 100%. Please adjust your inputs.');
+                return;
+            }
+            
+            // Submit budget form via AJAX
+            const formData = new FormData(budgetForm);
+            fetch(budgetForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Move to step 2
+                    step1.classList.add('hidden');
+                    step2.classList.remove('hidden');
+                    
+                    // Update progress indicators
+                    step1Indicator.classList.remove('bg-blue-600', 'text-white');
+                    step1Indicator.classList.add('bg-green-500', 'text-white');
+                    step2Indicator.classList.remove('bg-gray-200', 'text-gray-600');
+                    step2Indicator.classList.add('bg-blue-600', 'text-white');
+                    progress12.style.width = '100%';
+                } else {
+                    alert(data.message || 'Error saving budget. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+        
+        backToStep1.addEventListener('click', function() {
+            step2.classList.add('hidden');
+            step1.classList.remove('hidden');
+            
+            step2Indicator.classList.remove('bg-blue-600', 'text-white');
+            step2Indicator.classList.add('bg-gray-200', 'text-gray-600');
+            step1Indicator.classList.remove('bg-green-500');
+            step1Indicator.classList.add('bg-blue-600');
+        });
+        
+        nextToStep3.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Validate expense form
+            if (!expenseForm.checkValidity()) {
+                expenseForm.reportValidity();
+                return;
+            }
+            
+            // Submit expense form via AJAX
+            const formData = new FormData(expenseForm);
+            fetch(expenseForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Move to step 3
+                    step2.classList.add('hidden');
+                    step3.classList.remove('hidden');
+                    
+                    // Update progress indicators
+                    step2Indicator.classList.remove('bg-blue-600');
+                    step2Indicator.classList.add('bg-green-500');
+                    step3Indicator.classList.remove('bg-gray-200', 'text-gray-600');
+                    step3Indicator.classList.add('bg-blue-600', 'text-white');
+                    progress23.style.width = '100%';
+                } else {
+                    alert(data.message || 'Error saving expense. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        });
+        
+        backToStep2.addEventListener('click', function() {
+            step3.classList.add('hidden');
+            step2.classList.remove('hidden');
+            
+            step3Indicator.classList.remove('bg-blue-600', 'text-white');
+            step3Indicator.classList.add('bg-gray-200', 'text-gray-600');
+            step2Indicator.classList.remove('bg-green-500');
+            step2Indicator.classList.add('bg-blue-600');
+        });
+        
+        // Expose updateInvestments to global scope
+        window.updateInvestments = updateInvestments;
+    });
+</script>
+{% endblock %} 
