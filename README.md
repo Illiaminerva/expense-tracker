@@ -26,7 +26,7 @@ A Flask-based expense tracking application that helps users monitor their spendi
 ### Access Options
 
 #### Option 1: Live Application
-Access the live application at: [INSERT_YOUR_LIVE_LINK]
+Access the live application at: [[INSERT_YOUR_LIVE_LINK](https://expense-tracker-application-bccee6223f0f.herokuapp.com/)]
 
 #### Option 2: Local Development with Docker
 1. Clone the repository:
