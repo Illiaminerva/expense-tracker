@@ -2,6 +2,7 @@ from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import app, mongo, login_manager
+import posthog
 from app.forms import LoginForm, RegistrationForm, ExpenseForm, BudgetSettingsForm
 from app.models import User
 from bson.objectid import ObjectId
@@ -45,6 +46,12 @@ def get_random_fact():
 def load_user(user_id):
     """Load a user from the database using the user ID."""
     return User(user_id)
+
+
+def track_event(user_id, event_name, properties={}):
+    """Helper function to track events if PostHog is configured."""
+    if hasattr(posthog, 'api_key') and posthog.api_key:
+        posthog.capture(str(user_id), event_name, properties)
 
 
 @app.route("/")
@@ -94,6 +101,7 @@ def login():
             user_obj = User(str(user["_id"]))
             # Log the user in
             login_user(user_obj)
+            track_event(str(user["_id"]), 'user_logged_in')
             return redirect(url_for("index"))
         flash("Invalid email or password")  # Flash an error message if login fails
     # Render the login template with the form
@@ -130,6 +138,7 @@ def register():
         # Log in the new user
         user = User(user_id)
         login_user(user)
+        track_event(user_id, 'user_registered')
         
         flash("Account created successfully! Let's set up your profile.", "success")
         return redirect(url_for("onboarding"))
@@ -189,6 +198,12 @@ def add_expense():
         
         # Insert the new expense into the database
         mongo.db.expenses.insert_one(expense_data)
+        
+        track_event(current_user.get_id(), 'expense_added', {
+            'amount': expense_data['amount'],
+            'category': expense_data['category'],
+            'has_goal': bool(goal_id)
+        })
         
         # Check if this is from onboarding
         from_onboarding = request.form.get("from_onboarding") == "true"
@@ -521,6 +536,12 @@ def set_savings_goal():
                 {"_id": ObjectId(current_user.get_id())},
                 {"$set": {"savings_goals": savings_goals}}
             )
+            
+            track_event(current_user.get_id(), 'goal_created' if action == "add_goal" else 'goal_updated', {
+                'goal_amount': new_goal['goal_amount'],
+                'duration_days': (datetime.strptime(new_goal['end_date'], '%Y-%m-%d') - 
+                                datetime.strptime(new_goal['start_date'], '%Y-%m-%d')).days
+            })
             
             flash("Savings goal saved successfully!", "success")
             return redirect(url_for("set_savings_goal"))
