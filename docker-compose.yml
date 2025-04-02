@@ -6,19 +6,42 @@ services:
     ports:
       - "5001:5000"
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     environment:
-      - MONGO_URI=mongodb://mongo:27017/mydatabase
+      - MONGO_URI=mongodb://mongo:27017/expense_tracker
       - SECRET_KEY=${SECRET_KEY}
+      - PORT=5000
     env_file:
-      - .env 
+      - .env
+    networks:
+      - app-network
+    restart: unless-stopped
 
   mongo:
-    image: mongo
+    image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - MONGO_INITDB_DATABASE=expense_tracker
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
