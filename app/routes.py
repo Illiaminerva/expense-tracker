@@ -165,7 +165,27 @@ def add_expense():
         
         # Add goal_id if provided and category is Savings or Investments
         if goal_id and form.category.data in ["Savings", "Investments"]:
-            expense_data["goal_id"] = goal_id
+            # Get the goal details
+            user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+            if user_settings and "savings_goals" in user_settings:
+                goal = next((g for g in user_settings["savings_goals"] if g["goal_id"] == goal_id), None)
+                if goal:
+                    # Check if expense date is within goal date range
+                    expense_date = datetime.strptime(str(form.date.data), '%Y-%m-%d')
+                    goal_start = datetime.strptime(goal["start_date"], '%Y-%m-%d')
+                    goal_end = datetime.strptime(goal["end_date"], '%Y-%m-%d')
+                    
+                    if goal_start <= expense_date <= goal_end:
+                        expense_data["goal_id"] = goal_id
+                    else:
+                        error_msg = f"Expense date must be between {goal['start_date']} and {goal['end_date']} for this goal"
+                        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            return jsonify({
+                                "success": False, 
+                                "message": error_msg
+                            }), 400  # Return 400 Bad Request status
+                        flash(error_msg, "error")
+                        return redirect(url_for("index"))
         
         # Insert the new expense into the database
         mongo.db.expenses.insert_one(expense_data)
@@ -173,16 +193,24 @@ def add_expense():
         # Check if this is from onboarding
         from_onboarding = request.form.get("from_onboarding") == "true"
         
+        success_msg = "Expense added successfully!"
         # Check if this is an AJAX request
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({"success": True, "message": "Expense added successfully!"})
+            return jsonify({"success": True, "message": success_msg})
         
         if from_onboarding:
             return redirect(url_for("onboarding", step=3))
         else:
-            flash("Expense added successfully!")
+            flash(success_msg, "success")
+            return redirect(url_for("index"))
     
-    return redirect(url_for("index"))  # Redirect to the index page
+    # If form validation fails
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            "success": False,
+            "message": "Please check your input and try again."
+        }), 400
+    return redirect(url_for("index"))
 
 
 @app.route("/edit_expense/<expense_id>", methods=["POST"])
@@ -205,21 +233,50 @@ def edit_expense(expense_id):
     
     # Add goal_id if provided and category is Savings or Investments
     if goal_id and request.form["category"] in ["Savings", "Investments"]:
-        updated_expense["goal_id"] = goal_id
-    elif "goal_id" in request.form and not goal_id:
-        # If goal_id field exists but is empty, remove the goal_id
-        mongo.db.expenses.update_one(
-            {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
-            {"$unset": {"goal_id": ""}}
-        )
+        # Get the goal details
+        user_settings = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+        if user_settings and "savings_goals" in user_settings:
+            goal = next((g for g in user_settings["savings_goals"] if g["goal_id"] == goal_id), None)
+            if goal:
+                # Check if expense date is within goal date range
+                expense_date = datetime.strptime(updated_expense["date"], '%Y-%m-%d')
+                goal_start = datetime.strptime(goal["start_date"], '%Y-%m-%d')
+                goal_end = datetime.strptime(goal["end_date"], '%Y-%m-%d')
+                
+                if goal_start <= expense_date <= goal_end:
+                    updated_expense["goal_id"] = goal_id
+                else:
+                    error_msg = f"Expense date must be between {goal['start_date']} and {goal['end_date']} for this goal"
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({
+                            "success": False,
+                            "message": error_msg
+                        }), 400
+                    flash(error_msg, "error")
+                    return redirect(url_for("index"))
     
     # Update the expense in the database
-    mongo.db.expenses.update_one(
-        {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
-        {"$set": updated_expense},
-    )
-    flash("Expense updated successfully!")  # Flash a success message
-    return redirect(url_for("index"))  # Redirect to the index page
+    if "goal_id" in updated_expense:
+        # If goal_id is valid and date is within range, update with new goal_id
+        mongo.db.expenses.update_one(
+            {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
+            {"$set": updated_expense}
+        )
+    else:
+        # If no valid goal_id, remove goal_id if it exists
+        mongo.db.expenses.update_one(
+            {"_id": ObjectId(expense_id), "user_id": current_user.get_id()},
+            {
+                "$set": updated_expense,
+                "$unset": {"goal_id": ""}
+            }
+        )
+    
+    success_msg = "Expense updated successfully!"
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({"success": True, "message": success_msg})
+    flash(success_msg, "success")
+    return redirect(url_for("index"))
 
 
 @app.route("/delete_expense/<expense_id>")
@@ -406,20 +463,8 @@ def set_savings_goal():
             "created_at": datetime.now()
         })
     else:
-        # Retrieve savings goals (use an array instead of a single goal)
+        # Retrieve savings goals
         savings_goals = user_settings.get("savings_goals", [])
-        
-        # If old format with single goal, convert to new format
-        if "savings_goal" in user_settings and not savings_goals:
-            old_goal = user_settings.get("savings_goal")
-            if old_goal:
-                goal_obj_id = ObjectId()
-                old_goal["goal_id"] = str(goal_obj_id)
-                savings_goals = [old_goal]
-                mongo.db.users.update_one(
-                    {"_id": ObjectId(current_user.get_id())},
-                    {"$set": {"savings_goals": savings_goals}, "$unset": {"savings_goal": ""}}
-                )
 
     # Initialize goals data for the template
     goals_data = []
@@ -445,9 +490,28 @@ def set_savings_goal():
                 "created_at": datetime.now().strftime('%Y-%m-%d')
             }
             
-            # If editing, remove old goal first
+            # If editing, remove old goal first and update expenses
             if action == "edit_goal" and goal_id:
-                savings_goals = [goal for goal in savings_goals if goal.get("goal_id") != goal_id]
+                old_goal = next((g for g in savings_goals if g.get("goal_id") == goal_id), None)
+                if old_goal:
+                    # Check if date range changed
+                    if (old_goal["start_date"] != start_date or old_goal["end_date"] != end_date):
+                        # Remove goal_id from expenses that are now outside the date range
+                        new_start = datetime.strptime(start_date, '%Y-%m-%d')
+                        new_end = datetime.strptime(end_date, '%Y-%m-%d')
+                        
+                        # Update all expenses with this goal_id
+                        expenses = mongo.db.expenses.find({"user_id": current_user.get_id(), "goal_id": goal_id})
+                        for expense in expenses:
+                            expense_date = datetime.strptime(expense["date"], '%Y-%m-%d')
+                            if not (new_start <= expense_date <= new_end):
+                                # Remove goal_id if expense is outside new date range
+                                mongo.db.expenses.update_one(
+                                    {"_id": expense["_id"]},
+                                    {"$unset": {"goal_id": ""}}
+                                )
+                
+                savings_goals = [g for g in savings_goals if g.get("goal_id") != goal_id]
             
             # Add the new/updated goal
             savings_goals.append(new_goal)
@@ -464,6 +528,12 @@ def set_savings_goal():
         elif action == "delete_goal":
             goal_id = request.form.get("goal_id", "")
             if goal_id:
+                # Remove goal_id from all expenses associated with this goal
+                mongo.db.expenses.update_many(
+                    {"user_id": current_user.get_id(), "goal_id": goal_id},
+                    {"$unset": {"goal_id": ""}}
+                )
+                
                 # Remove the goal with the specified ID
                 savings_goals = [goal for goal in savings_goals if goal.get("goal_id") != goal_id]
                 
@@ -483,50 +553,32 @@ def set_savings_goal():
         start_date = goal.get("start_date", "")
         end_date = goal.get("end_date", "")
         
-        # Calculate total savings for this goal from expenses
-        total_savings = 0
+        # Get all expenses allocated to this specific goal
+        goal_expenses = list(mongo.db.expenses.find({
+            "user_id": str(current_user.get_id()), 
+            "category": {"$in": ["Savings", "Investments"]},
+            "goal_id": goal_id  # Only get expenses explicitly allocated to this goal
+        }).sort("date", 1))  # Sort by date ascending
+        
+        # Filter expenses within the goal date range
+        if start_date and end_date:
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+            goal_expenses = [expense for expense in goal_expenses if 
+                           start_date_obj <= datetime.strptime(expense['date'], '%Y-%m-%d') <= end_date_obj]
+
+        # Prepare savings data for the chart
         savings_data = {
             "dates": [],
             "cumulative_amounts": []
         }
         
-        # Get all expenses allocated to this goal
-        goal_expenses = list(mongo.db.expenses.find({
-            "user_id": str(current_user.get_id()), 
-            "category": {"$in": ["Savings", "Investments"]},
-            "goal_id": goal_id
-        }))
-        
-        # Also include expenses without a goal_id for backward compatibility
-        if not goal_expenses and len(savings_goals) == 1:
-            goal_expenses = list(mongo.db.expenses.find({
-                "user_id": str(current_user.get_id()), 
-                "category": {"$in": ["Savings", "Investments"]},
-                "goal_id": {"$exists": False}
-            }))
-        
-        # Filter expenses within the goal date range and sort by date
-        if start_date and end_date:
-            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-            filtered_expenses = [expense for expense in goal_expenses if 
-                                start_date_obj <= datetime.strptime(expense['date'], '%Y-%m-%d') <= end_date_obj]
-        else:
-            filtered_expenses = goal_expenses
-
-        # Sort expenses by date
-        filtered_expenses.sort(key=lambda x: x['date'])
-
-        # Prepare savings data for the chart
-        cumulative_amount = 0
-        for expense in filtered_expenses:
-            expense_date = expense['date']
-            amount = expense['amount']
-            cumulative_amount += amount
-            savings_data['dates'].append(expense_date)
-            savings_data['cumulative_amounts'].append(cumulative_amount)
-
-        total_savings = cumulative_amount
+        # Calculate cumulative savings
+        total_savings = 0
+        for expense in goal_expenses:
+            total_savings += expense['amount']
+            savings_data['dates'].append(expense['date'])
+            savings_data['cumulative_amounts'].append(total_savings)
 
         # Calculate progress towards the savings goal
         progress = (total_savings / goal_amount * 100) if goal_amount > 0 else 0
@@ -535,8 +587,9 @@ def set_savings_goal():
         goals_data.append({
             "goal": goal,
             "progress": progress,
+            "total_savings": total_savings,
             "savings_data": savings_data,
-            "total_savings": total_savings
+            "allocated_expenses": goal_expenses  # Pass the allocated expenses to the template
         })
 
     # Get a random financial fact

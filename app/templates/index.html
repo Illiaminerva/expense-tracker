@@ -9,7 +9,7 @@
     <!-- Add Expense Form -->
     <div class="mb-8 bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Add New Expense</h3>
-        <form method="POST" action="{{ url_for('add_expense') }}">
+        <form method="POST" action="{{ url_for('add_expense') }}" id="addExpenseForm">
             {{ form.hidden_tag() }}
             <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
@@ -20,7 +20,7 @@
                     <label for="amount" class="block text-sm font-medium text-gray-700">Amount ($)</label>
                     {{ form.amount(class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500") }}
                 </div>
-                <div class="mb-4">
+                <div>
                     <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
                     <select id="category" name="category" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <option value="Needs">Needs</option>
@@ -121,7 +121,7 @@
     <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Edit Expense</h3>
-            <button id="closeModal" class="text-gray-400 hover:text-gray-500">
+            <button type="button" id="closeModal" class="text-gray-400 hover:text-gray-500 p-2">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -173,48 +173,141 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Show/hide goal selection based on category
-        const categorySelect = document.getElementById('expenseCategory');
+        // Get all the necessary elements
+        const categorySelect = document.getElementById('category');
         const goalContainer = document.getElementById('goalSelectionContainer');
-        
-        categorySelect.addEventListener('change', function() {
-            if (this.value === 'Savings' || this.value === 'Investments') {
+        const editModal = document.getElementById('editModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const editCategory = document.getElementById('edit_category');
+        const editGoalContainer = document.getElementById('editGoalContainer');
+        const editForm = document.getElementById('editForm');
+        const addExpenseForm = document.getElementById('addExpenseForm');
+
+        // Function to toggle goal selection for add form
+        function toggleAddGoalSelection() {
+            const selectedCategory = categorySelect.value;
+            if (selectedCategory === 'Savings' || selectedCategory === 'Investments') {
                 goalContainer.classList.remove('hidden');
             } else {
                 goalContainer.classList.add('hidden');
+                document.getElementById('goal_id').value = '';
             }
-        });
-        
-        // Edit modal functionality
-        const editModal = document.getElementById('editModal');
-        const closeModal = document.getElementById('closeModal');
-        const editCategory = document.getElementById('edit_category');
-        const editGoalContainer = document.getElementById('editGoalContainer');
-        
-        closeModal.addEventListener('click', function() {
-            editModal.classList.add('hidden');
-        });
-        
-        editCategory.addEventListener('change', function() {
-            if (this.value === 'Savings' || this.value === 'Investments') {
+        }
+
+        // Function to toggle goal selection for edit form
+        function toggleEditGoalSelection() {
+            const selectedCategory = editCategory.value;
+            if (selectedCategory === 'Savings' || selectedCategory === 'Investments') {
                 editGoalContainer.classList.remove('hidden');
             } else {
                 editGoalContainer.classList.add('hidden');
                 document.getElementById('edit_goal_id').value = '';
             }
+        }
+
+        // Add event listeners for category changes
+        categorySelect.addEventListener('change', toggleAddGoalSelection);
+        editCategory.addEventListener('change', toggleEditGoalSelection);
+        
+        // Call on page load to handle initial states
+        toggleAddGoalSelection();
+        toggleEditGoalSelection();
+        
+        // Close modal when X button is clicked
+        closeModalBtn.addEventListener('click', function() {
+            editModal.classList.add('hidden');
+            editForm.reset();
         });
         
         // Close modal when clicking outside
         window.addEventListener('click', function(event) {
             if (event.target === editModal) {
                 editModal.classList.add('hidden');
+                editForm.reset();
             }
+        });
+
+        // Handle edit form submission
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(editForm);
+            fetch(editForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json().then(data => ({status: response.ok, data: data})))
+            .then(({status, data}) => {
+                if (status) {
+                    editModal.classList.add('hidden');
+                    editForm.reset();
+                    window.location.reload();
+                } else {
+                    // Show error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+                    errorDiv.innerHTML = `<span class="block sm:inline">${data.message}</span>`;
+                    
+                    // Remove any existing error messages
+                    const existingError = editForm.querySelector('.bg-red-100');
+                    if (existingError) {
+                        existingError.remove();
+                    }
+                    
+                    // Insert error message at the top of the form
+                    editForm.insertBefore(errorDiv, editForm.firstChild);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+        // Handle add form submission
+        addExpenseForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(addExpenseForm);
+            fetch(addExpenseForm.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json().then(data => ({status: response.ok, data: data})))
+            .then(({status, data}) => {
+                if (status) {
+                    addExpenseForm.reset();
+                    window.location.reload();
+                } else {
+                    // Show error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4';
+                    errorDiv.innerHTML = `<span class="block sm:inline">${data.message}</span>`;
+                    
+                    // Remove any existing error messages
+                    const existingError = addExpenseForm.querySelector('.bg-red-100');
+                    if (existingError) {
+                        existingError.remove();
+                    }
+                    
+                    // Insert error message at the top of the form
+                    const formFirstChild = addExpenseForm.querySelector('.grid');
+                    addExpenseForm.insertBefore(errorDiv, formFirstChild);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         });
     });
     
     // Function to populate the edit form
     function editExpense(id, description, amount, category, date, goalId) {
-        document.getElementById('editForm').action = "/edit_expense/" + id;
+        const editForm = document.getElementById('editForm');
+        editForm.action = "/edit_expense/" + id;
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_amount').value = amount;
         document.getElementById('edit_category').value = category;
@@ -224,9 +317,10 @@
         const editGoalContainer = document.getElementById('editGoalContainer');
         if (category === 'Savings' || category === 'Investments') {
             editGoalContainer.classList.remove('hidden');
-            document.getElementById('edit_goal_id').value = goalId;
+            document.getElementById('edit_goal_id').value = goalId || '';
         } else {
             editGoalContainer.classList.add('hidden');
+            document.getElementById('edit_goal_id').value = '';
         }
         
         document.getElementById('editModal').classList.remove('hidden');

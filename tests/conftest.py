@@ -5,48 +5,93 @@ from flask_login import login_user
 from werkzeug.security import generate_password_hash
 from app import app as flask_app
 from app.models import User
+from datetime import datetime
+from bson import ObjectId
+from mongomock import MongoClient
 
 @pytest.fixture()
 def app():
-    # Configure the Flask app for testing
+    """Create and configure a Flask application for testing."""
     flask_app.config.update({
-        'TESTING': True,  
-        'WTF_CSRF_ENABLED': False, 
+        'TESTING': True,
+        'WTF_CSRF_ENABLED': False,
+        'MONGO_URI': 'mongodb://localhost:27017/test_db'
     })
-    return flask_app  # Returns the app instance
+    return flask_app
 
-# Providing a test client to make requests
-@pytest.fixture
+@pytest.fixture()
 def client(app):
-    return app.test_client()  # Returns a test client
+    """Create a test client."""
+    return app.test_client()
 
-# Initialize and provide access to PyMongo
-@pytest.fixture
-def mongo(app):
-    return PyMongo(app) 
+@pytest.fixture()
+def runner(app):
+    """Create a test CLI runner."""
+    return app.test_cli_runner()
 
-# Create a test user for the database
 @pytest.fixture
-def test_user(mongo):
+def mock_db():
+    """Create a mock database."""
+    client = MongoClient()
+    db = client.test_db
+    
+    # Initialize collections
+    db.users.create_index('email', unique=True)
+    db.expenses.create_index([('user_id', 1), ('date', -1)])
+    
+    return db
+
+@pytest.fixture
+def test_user(mock_db):
+    """Create a test user with initial settings."""
     user_data = {
+        '_id': ObjectId(),
         'email': 'test@example.com',
-        'password': generate_password_hash('password123') 
+        'password': 'password123',
+        'created_at': datetime.now(),
+        'budget_settings': {
+            'needs': 50,
+            'wants': 30,
+            'savings': 10,
+            'investments': 10
+        },
+        'savings_goals': []
     }
-    mongo.db.users.delete_many({'email': user_data['email']})
-    # Making sure there is only one user
-    result = mongo.db.users.insert_one(user_data)
-    user_data['_id'] = result.inserted_id  
-    return user_data  # Return the test user data
+    mock_db.users.insert_one(user_data)
+    return user_data
 
-# Do a logged-in user session
+class MockPyMongo:
+    def __init__(self, db):
+        self.db = db
+
 @pytest.fixture
-def auth_client(client, test_user, app):
-    with client.session_transaction() as sess:
-        sess['_user_id'] = str(test_user['_id'])  # Set the session
+def mongo(mock_db):
+    """Create a mock PyMongo instance."""
+    return MockPyMongo(mock_db)
 
-    with app.test_request_context():
-        # Initialize a User object
-        user = User(test_user['_id'])
-        login_user(user)
+@pytest.fixture
+def auth_client(client, test_user):
+    """Create an authenticated test client."""
+    with client.session_transaction() as session:
+        session['_user_id'] = str(test_user['_id'])
+        session['_fresh'] = True
+    return client
 
-    return client  # Return the authenticated test client
+@pytest.fixture(autouse=True)
+def app_context(app):
+    """Create an application context for testing."""
+    with app.app_context():
+        yield
+
+@pytest.fixture(autouse=True)
+def override_mongo(app, monkeypatch, mongo):
+    """Override the MongoDB connection to use the mock database."""
+    def mock_init_app(self, app):
+        self.db = mongo.db
+        return self
+    
+    monkeypatch.setattr('flask_pymongo.PyMongo.init_app', mock_init_app)
+    monkeypatch.setattr('app.mongo.db', mongo.db)
+    
+    with app.app_context():
+        yield mongo

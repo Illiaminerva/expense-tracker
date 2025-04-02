@@ -11,9 +11,18 @@ app = Flask(__name__)
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/mydatabase")
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default_secret_key") 
 
-
 # Initialize PyMongo for MongoDB interactions
 mongo = PyMongo(app)
+
+# Ensure database is initialized
+with app.app_context():
+    # Create collections if they don't exist
+    if 'users' not in mongo.db.list_collection_names():
+        mongo.db.create_collection('users')
+    if 'expenses' not in mongo.db.list_collection_names():
+        mongo.db.create_collection('expenses')
+    if 'user_settings' not in mongo.db.list_collection_names():
+        mongo.db.create_collection('user_settings')
 
 # Initialize the LoginManager for user session management
 login_manager = LoginManager(app)
