@@ -20,58 +20,50 @@ A Flask-based expense tracking application that helps users monitor their spendi
 ### Prerequisites
 
 - Python 3.11+
-- Docker
-- MongoDB
+- Docker and Docker Compose (if running locally)
 - Git
 
-### Installation
+### Access Options
 
+#### Option 1: Live Application
+Access the live application at: [INSERT_YOUR_LIVE_LINK]
+
+#### Option 2: Local Development with Docker
 1. Clone the repository:
 ```bash
 git clone https://github.com/Illiaminerva/expense-tracker.git
 cd expense-tracker
 ```
-2. Set up MongoDB:
-- Install MongoDB if you haven't already
-- Create a new database
-- Note down your MongoDB URI
 
-3. Build and start the Docker containers:
+2. Build and start the Docker containers:
 ```bash
-docker-compose up -d
+docker-compose up --build
 ```
 
-4. Visit your localhost in the browser.
+3. Visit `http://localhost:5001` in your browser.
 
-## Run Tests (OUTDATED, to be fixed soon)
+## Testing
 
-To ensure everything is working correctly, run the test suite:
+### Setup Testing Environment
+1. Install testing requirements:
 ```bash
-pytest
+pip install -r requirements-test.txt
 ```
-This will execute all tests, including functionality for savings goals, expense management, and budgeting rules.
 
-## Usage
+2. Run the test suite:
+```bash
+pytest tests/
+```
 
-1. **Register/Login**: Create an account or login to access your dashboard.
-2. **Set Budget Allocations**:
-   - Allocate percentages to Needs, Wants, Savings, and Investments categories.
-   - The system automatically calculates the Investment percentage based on your other allocations.
-3. **Add Expenses**: 
-   - Enter the amount, description, and date.
-   - Select the appropriate category.
-   - Optionally link to a savings goal.
-4. **Create Savings Goals**:
-   - Set specific financial targets with deadlines.
-   - Track progress with visual charts.
-   - Link relevant expenses to goals. 
-5. **View Analytics**:
-   - Check monthly spending trends.
-   - Monitor category distribution.
-   - Visualize budget adherence.
-   - Track progress toward savings goals.
+The test suite covers:
+- User authentication (`tests/test_auth.py`)
+- Expense management (`tests/test_expenses.py`)
+- Budget calculations (`tests/test_budget.py`)
+- Database operations (`tests/test_db.py`)
+- Core functionality (`tests/test_core.py`)
 
 ## Project Structure
+
 ```
 expense-tracker/
 ├── app/
@@ -80,23 +72,21 @@ expense-tracker/
 │   ├── forms.py                     # Form definitions and validation
 │   ├── models.py                    # Data models and database interactions
 │   ├── static/                      # CSS
-│   │   ├── styles.css               # Stylesheets
 │   └── templates/                   # HTML templates
-│       ├── base.html                # Base template with common elements
-│       ├── budget_settings.html     # Budget settings template
-│       ├── index.html               # Dashboard template
-│       ├── login.html               # Login template
-│       ├── onboarding.html          # Onboarding template
-│       ├── register.html            # Register template
-│       ├── set_savings_goal.html    # Savings goals templates
-│       └── summary.html             # Analytics and reports
+├── tests/
+│   ├── conftest.py                  # Test configurations and fixtures
+│   ├── test_auth.py                 # Authentication tests
+│   ├── test_budget.py              # Budget calculation tests
+│   ├── test_core.py                # Core functionality tests
+│   ├── test_db.py                  # Database operation tests
+│   └── test_expenses.py            # Expense management tests
 ├── Dockerfile                       # Application container definition
-├── docker-compose.yml               # Container definition
-├── requirements.txt                 # Project dependencies
-├── .env.example                     # Example environment variables
-├── .gitignore                       # Git ignore rules
-└── run.py                           # Application entry point
+├── docker-compose.yml              # Container orchestration
+├── requirements.txt                # Project dependencies
+├── requirements-test.txt           # Testing dependencies
+└── .env.example                     # Example environment variables
 ```
+
 
 ## Technologies Used
 
@@ -106,9 +96,8 @@ expense-tracker/
   - Flask-Login (Authentication)
   - Flask-WTF (Form handling and validation)
   - Python-dateutil (Date manipulation)
-- **Database**: MongoDB (will later be changed to Postgresql)
-- **Frontend**: 
-  - HTML/CSS
-  - JavaScript
-  - Chart.js for visualizations
-  - Bootstrap
+- **Database**: MongoDB
+- **Testing**:
+  - Pytest
+  - Pytest-mock
+  - Coverage.py
